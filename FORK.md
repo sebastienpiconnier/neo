@@ -27,6 +27,11 @@ It was built with the help of Claude (Anthropic's AI assistant), then tested and
 - **French cover titles set better**: French small words (de, la, les, du…) are treated like "of" and "the" when the cover title is laid out.
 - **Small fixes that help every language**: word counts ignore lone punctuation (« », a spaced dash); the shortcuts sheet aligns its columns for longer labels; standard menu items (Undo, Copy, Quit…) are labelled in the chosen language.
 
+## Also in this fork
+
+- **Prologue and epilogue**: right-click the first chapter's heading to make it a prologue, or the last one's to make it an epilogue. They step out of the numbering (the next chapter becomes Chapter 1) everywhere, including exports; imported manuscripts keep their Prologue / Epilogue headings. On its own branch, [`prologue-epilogue`](../../tree/prologue-epilogue), to be offered separately.
+- **macOS**: no more duplicate "Enter Full Screen" in the View menu.
+
 ## How it works
 
 - **No dependencies, no framework.** A small helper, `i18n.js` (about 80 lines), is shared by the window and the main process.
@@ -98,6 +103,11 @@ Il a été réalisé avec l'aide de Claude (l'assistant IA d'Anthropic), puis te
 - **L'import comprend les manuscrits français** : titres « Chapitre », « Partie », « Épilogue » et mention « par Auteur ».
 - **Couvertures** : les petits mots français (de, la, les, du…) sont mis en page comme « of » et « the ».
 - **Vocabulaire** : Darlings devient **Chutier**, Pantser / Plotter deviennent **Jardinier / Architecte**.
+
+## Aussi dans ce fork
+
+- **Prologue et épilogue** : un clic droit sur le titre du premier chapitre en fait un prologue, sur celui du dernier un épilogue. Ils sortent de la numérotation (le chapitre suivant devient le chapitre 1) partout, exports compris ; les manuscrits importés gardent leurs titres Prologue / Épilogue. Sur sa propre branche, [`prologue-epilogue`](../../tree/prologue-epilogue), pour être proposé séparément.
+- **macOS** : plus de doublon « Activer le mode plein écran » dans le menu Présentation.
 
 ## Essayer
 

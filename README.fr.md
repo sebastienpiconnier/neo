@@ -39,6 +39,8 @@ Une page blanche par défaut, ou un mode sombre (que je préfère désormais !).
 
 Une fois Entrée : nouveau paragraphe. Deux fois : un saut de section `***`. Trois fois : un nouveau chapitre. Le but, c'est de CONTINUER À ÉCRIRE.
 
+Un clic droit sur le titre du premier chapitre en fait un prologue, sur celui du dernier un épilogue : ils sortent de la numérotation, et tout se renumérote.
+
 **Le Chutier**
 
 Le conseil d'écriture dit « tuez vos darlings », ces passages auxquels on tient trop. Moi je dis : *gardez les corps*. Glissez n'importe quel passage beau mais encombrant sur l'onglet Chutier. Il quitte votre manuscrit sans être perdu, et se restaure exactement à l'endroit d'où il vient. Des zombies plus que des darlings.
