@@ -16,6 +16,14 @@ Récupérez le dernier installateur sur la **[page des versions](../../releases)
 
 - **macOS** : téléchargez le `.dmg` pour les anciens Mac Intel ou le fichier arm64 pour les Mac Apple Silicon. Ouvrez-le et glissez NEO dans Applications.
 - **Windows** : téléchargez le `.exe` et lancez-le. Ou récupérez l'installateur (setup) et lancez-le.
+- **Linux** : téléchargez le `.AppImage`, rendez-le exécutable et lancez-le :
+
+  ```
+  chmod +x NEO-*.AppImage
+  ./NEO-*.AppImage
+  ```
+
+  S'il se plaint d'une sandbox (fréquent sous Ubuntu 24.04 et versions suivantes), lancez-le avec `./NEO-*.AppImage --no-sandbox`. Votre bibliothèque se trouve dans `~/Documents/NEO Library` ; Fichier → Dossier de la bibliothèque… permet de la déplacer où vous voulez.
 
 ## Pourquoi NEO ?
 
@@ -45,7 +53,7 @@ Faites le plan de vos chapitres et sections dans l'onglet Plan ; les notes de se
 
 **Les couvertures**
 
-Chaque livre a sa couverture ! Les nouveaux livres reçoivent une composition abstraite générée (six styles graphiques, six modèles typographiques, polices fournies avec NEO), si bien que deux histoires ne se ressemblent jamais sur l'étagère. Dès qu'une histoire dépasse 1 000 mots, NEO peut la lire et peindre une couverture abstraite à partir du texte. Cela demande un peu plus de travail mais en vaut vraiment la peine. Obtenez une clé d'API sur le site d'OpenAI et collez-la dans Objectifs et réglages. L'image est générée en arrière-plan pour environ un centime. (Ces images ne sont pas destinées à la publication, seulement à inspirer l'écriture !) La clé d'API est stockée chiffrée dans les réglages de NEO, jamais dans le dossier de votre bibliothèque. Le titre et l'auteur sont toujours composés en vraie typographie par-dessus, le lettrage n'est donc jamais confié à une IA générative. Le ↻ sur chaque livre change sa typographie et ses couleurs, ou le repeint. Et vous pouvez toujours passer du style abstrait moderne à la version peinte, et inversement.
+Chaque livre a sa couverture ! Les nouveaux livres reçoivent une composition abstraite générée (six styles graphiques, six modèles typographiques, polices fournies avec NEO), si bien que deux histoires ne se ressemblent jamais sur l'étagère. Dès qu'une histoire dépasse 1 000 mots, NEO peut la lire et peindre une couverture abstraite à partir du texte. Cela demande un peu plus de travail mais en vaut vraiment la peine. Obtenez une clé d'API sur le site d'OpenAI et collez-la dans **Fichier → Couverture…**. L'image est générée en arrière-plan pour environ un centime. (Ces images ne sont pas destinées à la publication, seulement à inspirer l'écriture !) La clé d'API est stockée chiffrée dans les réglages de NEO, jamais dans le dossier de votre bibliothèque. Le titre et l'auteur sont toujours composés en vraie typographie par-dessus, le lettrage n'est donc jamais confié à une IA générative. Le ↻ sur chaque livre change sa typographie et ses couleurs, ou le repeint. Et vous pouvez toujours passer du style abstrait moderne à la version peinte, et inversement.
 
 **Objectifs et élan**
 
