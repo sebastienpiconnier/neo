@@ -2,26 +2,6 @@
   "_meta": {
     "name": "English"
   },
-  "{n} books imported onto “{shelf}” — chapters and scene breaks detected": {
-    "one": "{n} book imported onto “{shelf}” — chapters and scene breaks detected",
-    "other": "{n} books imported onto “{shelf}” — chapters and scene breaks detected"
-  },
-  "{n} chapters": {
-    "one": "{n} chapter",
-    "other": "{n} chapters"
-  },
-  "{n} words": {
-    "one": "{n} word",
-    "other": "{n} words"
-  },
-  "{n} words · exported from NEO on {date}": {
-    "one": "{n} word · exported from NEO on {date}",
-    "other": "{n} words · exported from NEO on {date}"
-  },
-  "{n} words.": {
-    "one": "{n} word.",
-    "other": "{n} words."
-  },
   "Anthology of {n} works exported: {file}": {
     "one": "Anthology of {n} work exported: {file}",
     "other": "Anthology of {n} works exported: {file}"
@@ -53,5 +33,29 @@
   "Sprint ended — {n} words in {min} min": {
     "one": "Sprint ended — {n} word in {min} min",
     "other": "Sprint ended — {n} words in {min} min"
+  },
+  "{name}: {n} words": {
+    "one": "{name}: {n} word",
+    "other": "{name}: {n} words"
+  },
+  "{n} books imported onto “{shelf}” — chapters and scene breaks detected": {
+    "one": "{n} book imported onto “{shelf}” — chapters and scene breaks detected",
+    "other": "{n} books imported onto “{shelf}” — chapters and scene breaks detected"
+  },
+  "{n} chapters": {
+    "one": "{n} chapter",
+    "other": "{n} chapters"
+  },
+  "{n} words": {
+    "one": "{n} word",
+    "other": "{n} words"
+  },
+  "{n} words · exported from NEO on {date}": {
+    "one": "{n} word · exported from NEO on {date}",
+    "other": "{n} words · exported from NEO on {date}"
+  },
+  "{n} words.": {
+    "one": "{n} word.",
+    "other": "{n} words."
   }
 }
