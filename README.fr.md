@@ -77,7 +77,7 @@ Tout se trouve dans `~/Documents/NEO Library` : un dossier par livre, les chapit
 
 ## Langues
 
-NEO parle anglais et français. Choisissez dans **Présentation → Langue** ; au premier lancement, NEO suit la langue de votre système quand il la connaît. Ajouter une langue tient en un seul fichier, sans programmation : voir [TRANSLATING.md](TRANSLATING.md) (en anglais).
+NEO parle anglais, français, espagnol, portugais, allemand, italien, néerlandais et polonais. Choisissez dans **Présentation → Langue** ; au premier lancement, NEO suit la langue de votre système quand il la connaît. Ajouter une langue tient en un seul fichier, sans programmation : voir [TRANSLATING.md](TRANSLATING.md) (en anglais).
 
 ## Compiler depuis les sources (pour les curieux)
 
