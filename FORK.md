@@ -18,6 +18,7 @@ It was built with the help of Claude (Anthropic's AI assistant), then tested and
 
 - **View → Language** menu. On first launch, NEO follows the system language when a translation exists. Switching language saves the open book and reopens it in the new language.
 - **The whole interface is translated**: menus, dialogs, messages, tooltips, the shortcuts sheet, the empty-field hints, the first-run welcome.
+- **Regional variants**: a region only lists what differs from its language (`fr-CA` → `fr` → English). Canadian French is included ("courriel", Quebec punctuation); Belgian and Swiss French use the base French.
 - **Numbers and plurals follow the language** ("1 mot", "1 234 mots" in French).
 - **Exports follow the language**: chapter headings ("Chapitre 1"), EPUB table of contents and landmarks, "by / par" on title pages, the EPUB language tag.
 - **French typography while typing** (when NEO is in French, or the spellcheck language is French): « guillemets » with no-break spaces, the ’ apostrophe, and a narrow no-break space before ; : ! ? It works in the manuscript, titles, outline and notes.
@@ -39,7 +40,7 @@ It was built with the help of Claude (Anthropic's AI assistant), then tested and
 | File | Change |
 |---|---|
 | `i18n.js` | New: the translation helper |
-| `locales/en.json`, `locales/fr.json` | New: English plurals, complete French translation (about 400 strings) |
+| `locales/en.json`, `locales/fr.json`, `locales/fr-CA.json` | New: English plurals, complete French translation (about 420 strings), Canadian French differences |
 | `locales/_template.json` | New: blank template for translators |
 | `scripts/i18n.js` | New: template generator and coverage check |
 | `TRANSLATING.md` | New: how to add a language |
@@ -88,6 +89,7 @@ Il a été réalisé avec l'aide de Claude (l'assistant IA d'Anthropic), puis te
 
 - **Menu Présentation → Langue.** Au premier lancement, NEO suit la langue du système. Changer de langue enregistre le livre ouvert et le rouvre dans la nouvelle langue.
 - **Toute l'interface est traduite** : menus, fenêtres, messages, infobulles, aide des raccourcis, indications des champs vides, accueil.
+- **Variantes régionales** : une région ne contient que ses différences (`fr-CA` → `fr` → anglais). Le français canadien est inclus (« courriel », ponctuation québécoise) ; le français de Belgique et de Suisse utilise le français de base.
 - **Nombres et pluriels à la française** : « 1 mot », « 1 234 mots ».
 - **Les exports suivent la langue** : « Chapitre 1 », table des matières EPUB, « par » sur la page de titre, langue déclarée dans l'EPUB.
 - **Typographie française à la frappe** : « guillemets » avec espaces insécables, apostrophe ’, espace fine insécable avant ; : ! ? Dans le manuscrit comme dans les titres, le plan et les notes.
