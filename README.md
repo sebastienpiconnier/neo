@@ -1,3 +1,7 @@
+> **Multilingual edition of NEO.** This fork adds interface translations (English and French, with more languages one file away) to Hugh Howey's NEO. Nothing else changes. **[What this fork is and what changed →](FORK.md)**
+>
+> **Édition multilingue de NEO.** Ce fork ajoute la traduction de l'interface (anglais et français, d'autres langues en un simple fichier) au logiciel NEO de Hugh Howey. **[Présentation du fork →](FORK.md#version-française)**
+
 # NEO
 
 **A distraction-free word processor for authors, by a wannabe author.**
