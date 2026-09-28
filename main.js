@@ -178,7 +178,9 @@ function ensureLibrary() {
 }
 
 function bookDir(bookId) {
-  return path.join(LIBRARY_DIR, bookId);
+  const safeId = path.basename(String(bookId));
+  if (!safeId || safeId !== bookId) throw new Error('Invalid bookId');
+  return path.join(LIBRARY_DIR, safeId);
 }
 
 // A human-readable map of the library, regenerated on every change:
@@ -1194,7 +1196,15 @@ function buildMenu() {
             { label: t('Web Page (.html)'), click: () => sendToWindow({ type: 'export', format: 'html' }) },
             { label: 'PDF (.pdf)', click: () => sendToWindow({ type: 'export', format: 'pdf' }) },
             { label: 'Word (.docx)', click: () => sendToWindow({ type: 'export', format: 'docx' }) },
-            { label: 'EPUB (.epub)', click: () => sendToWindow({ type: 'export', format: 'epub' }) }
+            { label: 'EPUB (.epub)', click: () => sendToWindow({ type: 'export', format: 'epub' }) },
+            { type: 'separator' },
+            {
+              id: 'export-custom-chapter-titles',
+              label: t('Chapter Titles Only'),
+              type: 'checkbox',
+              checked: !!readJSON(LIBRARY_FILE, {}).exportCustomChapterTitles,
+              click: (item) => sendToWindow({ type: 'exportCustomChapterTitles', checked: item.checked })
+            }
           ]
         },
         { type: 'separator' },
@@ -1319,6 +1329,12 @@ function buildMenu() {
       label: t('View'),
       submenu: [
         {
+          label: t('Keyboard Shortcuts…'),
+          accelerator: 'CmdOrCtrl+/',
+          click: () => sendToWindow({ type: 'help' })
+        },
+        { type: 'separator' },
+        {
           label: t('Full Screen'),
           accelerator: 'CmdOrCtrl+Shift+F',
           click: () => {
@@ -1376,7 +1392,6 @@ function buildMenu() {
       submenu: [
         {
           label: t('NEO Shortcuts'),
-          accelerator: 'CmdOrCtrl+/',
           click: () => sendToWindow({ type: 'help' })
         },
         { type: 'separator' },
@@ -1508,6 +1523,9 @@ app.whenReady().then(() => {
         // these two official switches remove the ones writers can't use here
         systemPreferences.setUserDefault('NSDisabledDictationMenuItem', 'boolean', true);
         systemPreferences.setUserDefault('NSDisabledCharacterPaletteMenuItem', 'boolean', true);
+        // …and "Enter Full Screen" into the View menu, next to NEO's own
+        // Full Screen item (⇧⌘F): one is enough
+        systemPreferences.setUserDefault('NSFullScreenMenuItemEverywhere', 'boolean', false);
       } catch (err) {
         logError('prefs', err);
       }
