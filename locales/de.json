@@ -495,8 +495,6 @@
   "Outline note": "Gliederungsnotiz",
   "Words written over the last 30 days": "Geschriebene Wörter der letzten 30 Tage",
   "Move between the page, the chapters, the notes and the bottom bar": "Zwischen Seite, Kapiteln, Notizen und unterer Leiste wechseln",
-<<<<<<< HEAD
-  "⇧F6 goes back. Esc returns to the page.": "⇧F6 geht zurück. Esc kehrt zur Seite zurück.",
   "Epilogue": "Epilog",
   "It closes the book after the last chapter, unnumbered.": "Es beschließt das Buch nach dem letzten Kapitel, ohne Nummer.",
   "It goes back to being a numbered chapter.": "Es wird wieder ein nummeriertes Kapitel.",
@@ -509,8 +507,6 @@
     "one": "{name}: {n} Wort",
     "other": "{name}: {n} Wörter"
   },
-=======
->>>>>>> accessibility
   "Interface Size": "Größe der Oberfläche",
   "Normal": "Normal",
   "Large (125%)": "Groß (125 %)",
