@@ -480,5 +480,10 @@
   "“{title}” is back on the shelf": "«{title}» è di nuovo sullo scaffale",
   "“{title}” is back where it was": "«{title}» è tornato al suo posto",
   "“{title}” now sits on {name}’s top shelf — Esc puts it back": "«{title}» ora è sullo scaffale più alto di {name}: Esc per annullare",
-  "“{title}” removed from the shelves — its files are still in your NEO Library": "«{title}» tolto dagli scaffali: i suoi file sono ancora nella tua libreria di NEO"
+  "“{title}” removed from the shelves — its files are still in your NEO Library": "«{title}» tolto dagli scaffali: i suoi file sono ancora nella tua libreria di NEO",
+  "Chapters": "Capitoli",
+  "Title": "Titolo",
+  "Outline note": "Nota della scaletta",
+  "Words written over the last 30 days": "Parole scritte negli ultimi 30 giorni",
+  "Moves between the page, the chapters, the notes and the bottom bar, for the keyboard. Esc comes back to the page.": "Da tastiera, passa dalla pagina ai capitoli, alle note e alla barra in basso. Esc torna alla pagina."
 }

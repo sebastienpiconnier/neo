@@ -131,5 +131,6 @@
   "Your books live in:\n{dir}\n\nChoose another folder and NEO restarts there. Existing books stay where they are — move the files yourself if you want them along.": "Os seus livros estão em:\n{dir}\n\nEscolha outra pasta e o NEO reinicia nela. Os livros existentes ficam onde estão: mova os ficheiros se os quiser levar.",
   "You’re on the latest version ({version})": "Tem a versão mais recente ({version})",
   "Zoom the page — text and column together ({key} resets)": "Amplia a página, texto e coluna em conjunto ({key} repõe)",
-  "“{title}” removed from the shelves — its files are still in your NEO Library": "“{title}” foi retirado das estantes: os ficheiros continuam na sua biblioteca do NEO"
+  "“{title}” removed from the shelves — its files are still in your NEO Library": "“{title}” foi retirado das estantes: os ficheiros continuam na sua biblioteca do NEO",
+  "Outline note": "Nota do esquema"
 }
