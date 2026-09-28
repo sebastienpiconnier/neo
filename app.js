@@ -2235,6 +2235,15 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     if (currentTab === 'manuscript') darlingFromKeyboard();
   }
+  // Ctrl+; is matched by the character, not the key position. On a German
+  // QWERTZ keyboard the semicolon is Shift+',' — a combination the menu
+  // accelerator cannot name, so Ctrl+; never fired there. Shift is required
+  // in this branch because the plain Ctrl+; case belongs to the menu on the
+  // layouts that have it; this catches the ones that need Shift to type ';'.
+  if (cmd && e.shiftKey && !e.altKey && e.key === ';') {
+    e.preventDefault();
+    toggleSpellcheck();
+  }
   if (e.key === 'Escape') {
     if (!$('#searchbar').hidden) closeSearch();
     else window.neo.fullscreenEscape().then((exited) => { if (!exited) backToShelf(); });
@@ -4659,7 +4668,7 @@ function openStats() {
       ${hasBook ? `
       <div class="stats-row">
         <label>${t('Sprint')} <input id="st-sprint" type="number" min="50" value="${sprint ? sprint.target : 500}"/> ${t('words')}</label>
-        <button id="st-sprint-btn">${sprint && !sprint.done ? t('End sprint') : t('Start sprint')}</button>
+        <button id="st-sprint-btn" class="btn-gold">${sprint && !sprint.done ? t('End sprint') : t('Start sprint')}</button>
       </div>` : ''}
       <div style="text-align:right;margin-top:14px">
         <button class="m-ok btn-gold">${t('Done')}</button>
@@ -4869,73 +4878,124 @@ function applyAlign(value) {
   syncChapter(body, chId);
 }
 
+// Menu accelerators and editor shortcuts, plus NEO's distinct writing gestures.
+// Routine text entry, cursor movement and dialog controls are intentionally omitted.
+function shortcutSections() {
+  return [
+    { title: tk('Writing'), rows: [
+      [tk('Enter ×2'), tk('Insert a section break')],
+      [tk('Enter ×3'), tk('Start a new chapter')],
+      [K('⇧Enter', 'Shift+Enter'), tk('Start or continue a poetry paragraph'), tk('Also works from a chapter heading.')],
+      [KPH, tk('Insert a placeholder note')],
+      [KDA, tk('Move selected text to Darlings')]
+    ] },
+    { title: tk('Formatting'), rows: [
+      [K('⌘B', 'Ctrl+B'), tk('Bold')],
+      [K('⌘I', 'Ctrl+I'), tk('Italic')],
+      [K('⌘⇧L', 'Ctrl+Shift+L'), tk('Align paragraph left')],
+      [K('⌘⇧C', 'Ctrl+Shift+C'), tk('Center paragraph')],
+      [K('⌘⇧R', 'Ctrl+Shift+R'), tk('Align paragraph right')],
+      [K('⌘⇧J', 'Ctrl+Shift+J'), tk('Justify paragraph')],
+      [K('⌘+', 'Ctrl++'), tk('Larger text')],
+      [K('⌘−', 'Ctrl+−'), tk('Smaller text')],
+      [K('⌘0', 'Ctrl+0'), tk('Reset text size and page zoom')],
+      [K(tk('⌃Scroll'), tk('Ctrl+Scroll')), tk('Zoom the page')]
+    ] },
+    { title: tk('Outline'), rows: [
+      ['Tab', tk('Turn a chapter into a section'), tk('Only empty chapters after the first chapter.')],
+      [K('⇧Tab', 'Shift+Tab'), tk('Turn a section into a chapter')]
+    ] },
+    { title: tk('Editing'), rows: [
+      [KZ, tk('Undo'), tk('Also undoes recent chapter changes, Darlings moves and Replace All.')],
+      [K('⌘⇧Z', /win/i.test(navigator.platform) ? 'Ctrl+Y' : 'Ctrl+Shift+Z'), tk('Redo')],
+      [K('⌘X', 'Ctrl+X'), tk('Cut')],
+      [K('⌘C', 'Ctrl+C'), tk('Copy')],
+      [K('⌘V', 'Ctrl+V'), tk('Paste')],
+      [K('⌘⌥⇧V', 'Ctrl+Shift+V'), tk('Paste and match style')],
+      [K('⌘A', 'Ctrl+A'), tk('Select all')],
+      [K('⌘F', 'Ctrl+F'), tk('Find and replace')],
+      [K('⌘;', 'Ctrl+;'), tk('Toggle spellcheck pass')]
+    ] },
+    { title: tk('App & files'), rows: [
+      [KHELP, tk('Keyboard shortcuts')],
+      [K('⌘,', 'Ctrl+,'), tk('Goals and writing sprints')],
+      [K('⌘⇧I', 'Ctrl+Shift+I'), tk('Import manuscripts')],
+      [K('⌘E', 'Ctrl+E'), tk('Email a draft to yourself')]
+    ] },
+    { title: tk('View & window'), rows: [
+      [[K('⌘⇧F', 'Ctrl+Shift+F'), K('⌘Enter', 'Ctrl+Enter')], tk('Toggle full screen')],
+      [K('⌘⇧T', 'Ctrl+Shift+T'), tk('Toggle typewriter scrolling')],
+      [K('⌘⇧O', 'Ctrl+Shift+O'), tk('Cycle focus mode'), tk('Off → paragraph → sentence → off.')],
+      [K('⌘M', 'Ctrl+M'), tk('Minimize window')],
+      [K('⌘W', 'Ctrl+W'), tk('Close window')],
+      ['F6', tk('Move between the page, the chapters, the notes and the bottom bar'), tk('⇧F6 goes back. Esc returns to the page.')],
+      ...(IS_MAC ? [
+        ['⌘H', tk('Hide NEO')],
+        ['⌘⌥H', tk('Hide other apps')]
+      ] : []),
+      ...(!/win/i.test(navigator.platform) ? [[K('⌘Q', 'Ctrl+Q'), tk('Quit NEO')]] : [])
+    ] }
+  ];
+}
+
 function showHelp() {
-  const row = (k, d) => `<span class="hk">${k}</span><span>${d}</span>`;
+  const existing = $('#keyboard-shortcuts');
+  if (existing) { existing.querySelector('.shortcuts-content').focus(); return; }
+  const previousFocus = document.activeElement;
+  const selection = window.getSelection();
+  const previousRange = previousFocus.isContentEditable && selection.rangeCount
+    ? selection.getRangeAt(0).cloneRange() : null;
   const bd = document.createElement('div');
+  bd.id = 'keyboard-shortcuts';
   bd.className = 'modal-backdrop';
   bd.innerHTML = `
-    <div class="modal" style="width:560px">
-      <h2>${t('NEO Shortcuts')}</h2>
-
-      <div class="help-sec">${t('Writing')}</div>
-      <div class="help-grid">
-        ${row(t('Enter ×2'), t('Section break (***)'))}
-        ${row(t('Enter ×3'), t('New chapter, auto-numbered'))}
-        ${row('⇧Enter', t('Poetry paragraph — verse, a quote, a POV name; italic, set in from the margins. ⇧Enter again continues it; Enter returns to prose'))}
-        ${row(KPH, t('Placeholder note'))}
-        ${row(KDA, t('Send the selected passage to Darlings'))}
-        ${row(KZ, t('Undo big moves (chapter deletes, replace-all, darlings) when not mid-typing'))}
-        ${row(t('-- and ...'), t('Become an em dash — and a true ellipsis …'))}
-        ${row(K('⌘B · ⌘I', 'Ctrl+B · Ctrl+I'), t('Bold, italic. Quotes curl themselves.'))}
-        ${row(K('⌘⇧ + …', 'Ctrl+Shift+…'), t('Align paragraph: L left · C center · R right · J justify'))}
-      </div>
-
-      <div class="help-sec">${t('Getting around')}</div>
-      <div class="help-grid">
-        ${row(K('⌘F', 'Ctrl+F'), t('Find &amp; replace across the whole book'))}
-        ${row(t('Hover edges'), t('Left: chapters &amp; outline notes. Right: comments (☉ pins).'))}
-        ${row(t('Esc'), t('Closes whatever’s open; otherwise back to the shelf'))}
-        ${row('F6', t('Moves between the page, the chapters, the notes and the bottom bar, for the keyboard. Esc comes back to the page.'))}
-      </div>
-
-      <div class="help-sec">${t('Modes')}</div>
-      <div class="help-grid">
-        ${row(K('⌘⇧F', 'Ctrl+Shift+F'), t('Full screen (Esc leaves)'))}
-        ${row(K('⌘⇧T', 'Ctrl+Shift+T'), t('Typewriter scrolling'))}
-        ${row(K('⌘⇧O', 'Ctrl+Shift+O'), t('Focus mode: off → paragraph → sentence → off (View → Focus Mode picks one directly)'))}
-        ${row(K('⌘;', 'Ctrl+;'), t('Spellcheck pass (right-click squiggles for fixes)'))}
-      </div>
-
-      <div class="help-sec">${t('Files')}</div>
-      <div class="help-grid">
-        ${row(K('⌘E', 'Ctrl+E'), t('Email a timestamped draft to yourself'))}
-        ${row(K('⌘⇧I', 'Ctrl+Shift+I'), t('Import .docx / .txt / .md manuscripts'))}
-        ${row(t('File → Export'), 'txt · md · html · pdf · docx · epub')}
-      </div>
-
-      <div class="help-sec">${t('Mouse')}</div>
-      <div class="help-grid">
-        ${row(t('Drag text'), t('Onto the Darlings tab'))}
-        ${row(t('Right-click'), t('Books, shelf names, chapter headings, outline lines'))}
-        ${row(t('Drag chapters'), t('In the left panel, to reorder — everything renumbers'))}
-        ${row(t('Double-click'), t('A tab, to rename it'))}
-        ${row(t('Click counters'), t('Cycle word counts · open goals &amp; sprints'))}
-        ${row(K(t('Pinch'), t('Ctrl+Scroll')), t('Zoom the page — text and column together ({key} resets)', { key: K('⌘0', 'Ctrl+0') }))}
-        ${row(t('Zoom control'), t('Bottom bar — +/− buttons, scroll it, or click the % to reset'))}
-      </div>
-
-      <div style="text-align:right;margin-top:18px">
-        <button class="m-ok btn-gold">${t('Got it')}</button>
-      </div>
+    <div class="modal shortcuts-modal" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title">
+      <header class="shortcuts-header">
+        <h2 id="shortcuts-title">${t('Keyboard shortcuts')}</h2>
+      </header>
+      <div class="shortcuts-content" tabindex="0" role="region" aria-label="${t('Shortcut reference')}"></div>
+      <footer class="shortcuts-footer">
+        <span>${t(K(tk('⌘ Command · ⇧ Shift · ⌥ Option · ⌃ Control'), tk('Ctrl Control · Shift · Alt')))}</span>
+        <button class="m-ok btn-gold">${t('Done')}</button>
+      </footer>
     </div>`;
-  document.body.appendChild(bd);
-  // one key column for every section, as wide as the longest label
-  const keyW = Math.max(...[...bd.querySelectorAll('.hk')].map((el) => el.scrollWidth));
-  bd.querySelectorAll('.help-grid').forEach((g) => { g.style.gridTemplateColumns = `${Math.ceil(keyW)}px 1fr`; });
-  const close = () => bd.remove();
+  const keyName = (key) => key.replaceAll('⌘', t('Command') + ' ').replaceAll('⇧', t('Shift') + ' ')
+    .replaceAll('⌥', t('Option') + ' ').replaceAll('⌃', t('Control') + ' ').replaceAll('−', '-');
+  const content = bd.querySelector('.shortcuts-content');
+  const sections = shortcutSections().map((section, index) => `
+    <section class="shortcuts-section" style="order:${index}"><h3>${escHtml(t(section.title))}</h3><dl>${section.rows.map(([keys, label, detail]) => `
+      <div class="shortcut-row">
+        <dt>${escHtml(t(label))}${detail ? `<small>${escHtml(t(detail))}</small>` : ''}</dt>
+        <dd>${[keys].flat().map((key) => t(key)).map((key) => `<kbd aria-label="${escHtml(keyName(key))}">${escHtml(key)}</kbd>`).join(`<span class="shortcut-or">${t('or')}</span>`)}</dd>
+      </div>`).join('')}</dl></section>`);
+  // Keep Writing and Formatting first, with similar amounts of content per column.
+  content.innerHTML = [[0, 2, 4, 5], [1, 3]].map((column) => `<div class="shortcuts-column">${
+    column.map((index) => sections[index]).join('')
+  }</div>`).join('');
+  const close = () => {
+    document.removeEventListener('keydown', handleKeyDown, true);
+    bd.remove();
+    if (previousFocus.isConnected) previousFocus.focus({ preventScroll: true });
+    if (previousRange && previousRange.startContainer.isConnected && previousRange.endContainer.isConnected) {
+      selection.removeAllRanges();
+      selection.addRange(previousRange);
+    }
+  };
   bd.querySelector('.m-ok').onclick = close;
-  bd.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
-  bd.querySelector('.m-ok').focus();
+  bd.addEventListener('mousedown', (e) => { if (e.target === bd) close(); });
+  const handleKeyDown = (e) => {
+    e.stopPropagation(); // The editor must not handle keys while reading help.
+    if (e.key === 'Escape') { e.preventDefault(); close(); }
+    if (e.key === 'Tab') {
+      const controls = [content, bd.querySelector('.m-ok')];
+      const index = controls.indexOf(document.activeElement);
+      e.preventDefault();
+      controls[(index + (e.shiftKey ? controls.length - 1 : 1)) % controls.length].focus();
+    }
+  };
+  document.addEventListener('keydown', handleKeyDown, true);
+  document.body.appendChild(bd);
+  content.focus();
 }
 
 /* ================================================================== */
@@ -4991,7 +5051,9 @@ function exportChapters() {
     // chapterless stories export as continuous text
     const heading = book.chapterOrder.length === 1
       ? ''
-      : t('Chapter {n}', { n: i + 1 }) + (chTitle ? ' — ' + chTitle : '');
+      : library.exportCustomChapterTitles && chTitle
+        ? chTitle
+        : t('Chapter {n}', { n: i + 1 }) + (chTitle ? ' — ' + chTitle : '');
     return { num: i + 1, heading, paras };
   });
 }
@@ -5558,10 +5620,15 @@ async function showAbout() {
 }
 
 window.neo.onMenu(async (msg) => {
+  if ($('#keyboard-shortcuts') && msg.type !== 'help') return;
   if (msg.type === 'help') showHelp();
   if (msg.type === 'about') showAbout();
   if (msg.type === 'checkUpdate') checkForUpdate();
   if (msg.type === 'export') doExport(msg.format);
+  if (msg.type === 'exportCustomChapterTitles') {
+    library.exportCustomChapterTitles = msg.checked;
+    await window.neo.writeLibrary(library);
+  }
   if (msg.type === 'emailDraft') doEmailDraft();
   if (msg.type === 'emailSettings') emailSettings();
   if (msg.type === 'find') openSearch();
