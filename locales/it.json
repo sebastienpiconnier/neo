@@ -495,10 +495,10 @@
   "Outline note": "Nota della scaletta",
   "Words written over the last 30 days": "Parole scritte negli ultimi 30 giorni",
   "Move between the page, the chapters, the notes and the bottom bar": "Passare dalla pagina ai capitoli, alle note e alla barra in basso",
-  "⇧F6 goes back. Esc returns to the page.": "⇧F6 torna indietro. Esc riporta alla pagina.",
   "Interface Size": "Dimensione dell’interfaccia",
   "Normal": "Normale",
   "Large (125%)": "Grande (125%)",
   "Larger (150%)": "Più grande (150%)",
-  "Largest (200%)": "Massima (200%)"
+  "Largest (200%)": "Massima (200%)",
+  "Add Shift to go back. Esc returns to the page. On the shelf: the books, then the header.": "Con Maiuscole, all’indietro. Esc torna alla pagina. Nello scaffale: i libri, poi l’intestazione."
 }

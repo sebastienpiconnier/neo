@@ -4932,7 +4932,7 @@ function shortcutSections() {
       [K('⌘⇧O', 'Ctrl+Shift+O'), tk('Cycle focus mode'), tk('Off → paragraph → sentence → off.')],
       [K('⌘M', 'Ctrl+M'), tk('Minimize window')],
       [K('⌘W', 'Ctrl+W'), tk('Close window')],
-      ['F6', tk('Move between the page, the chapters, the notes and the bottom bar'), tk('⇧F6 goes back. Esc returns to the page.')],
+      [['F6', K('⌃Tab', 'Ctrl+Tab')], tk('Move between the page, the chapters, the notes and the bottom bar'), tk('Add Shift to go back. Esc returns to the page. On the shelf: the books, then the header.')],
       ...(IS_MAC ? [
         ['⌘H', tk('Hide NEO')],
         ['⌘⌥H', tk('Hide other apps')]
@@ -5895,10 +5895,25 @@ const REGIONS = [
   },
   { box: () => $('#bottombar'), enter: () => ($('.tab.active') || $('#back-to-shelf')).focus() }
 ];
+// F6, or ⌃Tab: on a Mac the F-keys drive brightness and sound unless fn is
+// held, so F6 alone would do nothing there.
+const regionKey = (e) => e.key === 'F6' || (e.key === 'Tab' && e.ctrlKey && !e.metaKey && !e.altKey);
+// On the shelf: the books, then the header (author, Import, + Shelf).
+const SHELF_REGIONS = [
+  { box: () => $('#shelves'), enter: () => { const b = $('#shelves .book') || $('#shelves .new-book'); if (b) b.focus(); } },
+  { box: () => $('#shelf-header'), enter: () => $('#author-chip').focus() }
+];
 document.addEventListener('keydown', (e) => {
-  if ($('#editor-view').hidden || document.querySelector('.modal-backdrop:not([hidden])')) return;
+  if (document.querySelector('.modal-backdrop:not([hidden])')) return;
+  if ($('#editor-view').hidden) {
+    if (!regionKey(e)) return;
+    e.preventDefault();
+    const at = SHELF_REGIONS.findIndex((r) => r.box().contains(document.activeElement));
+    SHELF_REGIONS[at < 0 ? 0 : (at + 1) % SHELF_REGIONS.length].enter();
+    return;
+  }
   const here = REGIONS.findIndex((r) => r.box().contains(document.activeElement));
-  if (e.key === 'F6') {
+  if (regionKey(e)) {
     e.preventDefault();
     // from nowhere in particular (a book just opened), forward starts at the page
     if (here < 0) { REGIONS[e.shiftKey ? REGIONS.length - 1 : 0].enter(); return; }
