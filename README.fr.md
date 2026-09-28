@@ -81,6 +81,10 @@ Tout se trouve dans `~/Documents/NEO Library` : un dossier par livre, les chapit
 
 NEO parle anglais, français, espagnol, portugais, allemand, italien, néerlandais et polonais. Choisissez dans **Présentation → Langue** ; au premier lancement, NEO suit la langue de votre système quand il la connaît. Ajouter une langue tient en un seul fichier, sans programmation : voir [TRANSLATING.md](TRANSLATING.md) (en anglais).
 
+## Accessibilité
+
+**Présentation → Interface plus lumineuse** rend tous les textes lisibles (contraste 4,5:1 du RGAA et du WCAG) ; elle s'active d'elle-même si votre système demande plus de contraste. Au clavier, **F6** passe de la page aux chapitres, aux notes et à la barre du bas, et **Échap** ramène à la page. Les lecteurs d'écran trouvent des boutons, onglets et chapitres nommés. Le réglage « Réduire les animations » du système est respecté.
+
 ## Compiler depuis les sources (pour les curieux)
 
 Nécessite [Node.js](https://nodejs.org).

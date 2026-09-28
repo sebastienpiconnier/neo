@@ -10,7 +10,7 @@ Everything else is NEO, unchanged. English users see exactly the same app.
 
 NEO is a wonderful tool for writing books, but its interface was English-only, which kept it out of reach of many writers. The goal of this fork is to open it to authors who write in other languages, starting with French, while respecting NEO's philosophy: no bloat, nothing that interrupts the writer, plain files.
 
-This work is offered to the original project. Hugh Howey is free to take all of it, part of it, or just the idea. The changes live on the [`i18n` branch](../../tree/i18n), kept clean so it can become a pull request at any time.
+This work is offered to the original project. Hugh Howey is free to take all of it, part of it, or just the idea. The changes live on the [`i18n` branch](../../tree/i18n), offered to Hugh Howey as [pull request #94](https://github.com/hughhowey/neo/pull/94).
 
 It was built with the help of Claude (Anthropic's AI assistant), then tested and reviewed by a French novelist who uses NEO.
 
@@ -30,7 +30,13 @@ It was built with the help of Claude (Anthropic's AI assistant), then tested and
 ## Also in this fork
 
 - **Prologue and epilogue**: right-click the first chapter's heading to make it a prologue, or the last one's to make it an epilogue. They step out of the numbering (the next chapter becomes Chapter 1) everywhere, including exports; imported manuscripts keep their Prologue / Epilogue headings. On its own branch, [`prologue-epilogue`](../../tree/prologue-epilogue), to be offered separately.
-- **macOS**: no more duplicate "Enter Full Screen" in the View menu.
+- **macOS**: no more duplicate "Enter Full Screen" in the View menu ([pull request #95](https://github.com/hughhowey/neo/pull/95)).
+- **Accessibility** (on its own branch, [`accessibility`](../../tree/accessibility)):
+  - **View → Brighter Interface** is now a checkbox, and turns on by itself when the system asks for more contrast (macOS "Increase contrast", Windows contrast themes). In it, every text, hint and placeholder reaches the 4.5:1 contrast that WCAG and France's RGAA ask for, on paper and at night.
+  - At rest, the interface text that carries information (note labels, word counts, outline numbers, empty-tab messages) reads at 4.5:1 too. NEO's quiet look stays: the bottom bar still fades until you reach for it.
+  - **Keyboard**: F6 moves between the page, the chapters, the notes and the bottom bar (⇧F6 backwards, Esc back to the page). Books, chapters, tabs and counters answer to Tab, Enter and Space. A gold ring shows where the keyboard is.
+  - **Screen readers**: named buttons and regions, tabs with their state, named chapters, dialogs announced as dialogs, the progress chart described.
+  - The system's "Reduce motion" stills fades and slides; Windows high-contrast mode is supported.
 
 ## How it works
 
@@ -87,7 +93,7 @@ Tout le reste, c'est NEO, inchangé. Les utilisateurs anglophones voient exactem
 
 NEO est un formidable outil d'écriture, mais son interface n'existait qu'en anglais. L'objectif est de l'ouvrir aux auteurs d'autres langues, à commencer par le français, en respectant sa philosophie : pas de superflu, rien qui interrompe l'écriture, des fichiers simples.
 
-Ce travail est proposé au projet d'origine : Hugh Howey est libre d'en reprendre tout, une partie, ou seulement l'idée. Les modifications se trouvent sur la [branche `i18n`](../../tree/i18n), gardée propre pour pouvoir devenir une pull request à tout moment.
+Ce travail est proposé au projet d'origine : Hugh Howey est libre d'en reprendre tout, une partie, ou seulement l'idée. Les modifications se trouvent sur la [branche `i18n`](../../tree/i18n), proposée à Hugh Howey sous forme de [demande de fusion n° 94](https://github.com/hughhowey/neo/pull/94).
 
 Il a été réalisé avec l'aide de Claude (l'assistant IA d'Anthropic), puis testé et relu par un romancier français qui utilise NEO.
 
@@ -107,7 +113,13 @@ Il a été réalisé avec l'aide de Claude (l'assistant IA d'Anthropic), puis te
 ## Aussi dans ce fork
 
 - **Prologue et épilogue** : un clic droit sur le titre du premier chapitre en fait un prologue, sur celui du dernier un épilogue. Ils sortent de la numérotation (le chapitre suivant devient le chapitre 1) partout, exports compris ; les manuscrits importés gardent leurs titres Prologue / Épilogue. Sur sa propre branche, [`prologue-epilogue`](../../tree/prologue-epilogue), pour être proposé séparément.
-- **macOS** : plus de doublon « Activer le mode plein écran » dans le menu Présentation.
+- **macOS** : plus de doublon « Activer le mode plein écran » dans le menu Présentation ([demande de fusion n° 95](https://github.com/hughhowey/neo/pull/95)).
+- **Accessibilité** (sur sa propre branche, [`accessibility`](../../tree/accessibility)) :
+  - **Présentation → Interface plus lumineuse** devient une case à cocher, et s'active d'elle-même quand le système demande plus de contraste (« Augmenter le contraste » sur macOS, thèmes de contraste sur Windows). Tous les textes, indications et zones vides y atteignent le contraste de 4,5:1 demandé par le WCAG et le RGAA, sur papier comme de nuit.
+  - Au repos, les textes d'interface qui portent une information (étiquettes des notes, nombres de mots, numéros du plan, messages des onglets vides) atteignent aussi 4,5:1. L'esprit discret de NEO demeure : la barre du bas reste estompée tant qu'on ne va pas la chercher.
+  - **Clavier** : F6 passe de la page aux chapitres, aux notes et à la barre du bas (Maj+F6 en arrière, Échap revient à la page). Livres, chapitres, onglets et compteurs répondent à Tab, Entrée et Espace. Un anneau doré montre où se trouve le clavier.
+  - **Lecteurs d'écran** : boutons et zones nommés, onglets avec leur état, chapitres nommés, fenêtres annoncées comme telles, graphique de progression décrit.
+  - « Réduire les animations » du système fige fondus et glissements ; le mode contraste élevé de Windows est pris en charge.
 
 ## Essayer
 
