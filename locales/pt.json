@@ -48,7 +48,7 @@
   "Books in your library that aren’t on a shelf": "Livros da sua biblioteca que não estão em nenhuma estante",
   "Books move to another shelf. Nothing is deleted from disk.": "Os livros vão para outra estante. Nada é apagado do disco.",
   "Brief": "Resumo",
-  "Brighter Interface": "Interface mais clara",
+  "Brighter Interface": "Contraste reforçado",
   "Bring All to Front": "Trazer tudo para a frente",
   "Bring your manuscripts home": "Traga seus manuscritos para casa",
   "by {author}": "por {author}",
@@ -495,5 +495,10 @@
   "Outline note": "Nota do roteiro",
   "Words written over the last 30 days": "Palavras escritas nos últimos 30 dias",
   "Move between the page, the chapters, the notes and the bottom bar": "Passar da página aos capítulos, às notas e à barra inferior",
-  "⇧F6 goes back. Esc returns to the page.": "⇧F6 volta. Esc retorna à página."
+  "⇧F6 goes back. Esc returns to the page.": "⇧F6 volta. Esc retorna à página.",
+  "Interface Size": "Tamanho da interface",
+  "Normal": "Normal",
+  "Large (125%)": "Grande (125%)",
+  "Larger (150%)": "Maior (150%)",
+  "Largest (200%)": "Máximo (200%)"
 }

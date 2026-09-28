@@ -48,7 +48,7 @@
   "Books in your library that aren’t on a shelf": "Boeken in je bibliotheek die op geen enkele plank staan",
   "Books move to another shelf. Nothing is deleted from disk.": "De boeken gaan naar een andere plank. Er wordt niets van de schijf verwijderd.",
   "Brief": "Samenvatting",
-  "Brighter Interface": "Lichtere interface",
+  "Brighter Interface": "Verhoogd contrast",
   "Bring All to Front": "Alles naar voren halen",
   "Bring your manuscripts home": "Haal je manuscripten naar huis",
   "by {author}": "door {author}",
@@ -492,5 +492,10 @@
   "Outline note": "Notitie bij het plan",
   "Words written over the last 30 days": "Geschreven woorden in de afgelopen 30 dagen",
   "Move between the page, the chapters, the notes and the bottom bar": "Wisselen tussen pagina, hoofdstukken, notities en onderbalk",
-  "⇧F6 goes back. Esc returns to the page.": "⇧F6 gaat terug. Esc keert terug naar de pagina."
+  "⇧F6 goes back. Esc returns to the page.": "⇧F6 gaat terug. Esc keert terug naar de pagina.",
+  "Interface Size": "Grootte van de interface",
+  "Normal": "Normaal",
+  "Large (125%)": "Groot (125%)",
+  "Larger (150%)": "Groter (150%)",
+  "Largest (200%)": "Grootst (200%)"
 }
