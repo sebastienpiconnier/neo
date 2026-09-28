@@ -2,6 +2,8 @@
 
 *[Version française plus bas](#version-française)*
 
+> **Now part of NEO.** The translations were merged by Hugh Howey and shipped in **NEO 0.9.0** ([#94](https://github.com/hughhowey/neo/pull/94)), along with the macOS menu fix ([#95](https://github.com/hughhowey/neo/pull/95)). Download NEO from [its own releases page](https://github.com/hughhowey/neo/releases). This fork now carries what is offered next: the translation of the new shortcuts window, prologue and epilogue, and accessibility.
+
 This fork of [NEO](https://github.com/hughhowey/neo), Hugh Howey's distraction-free word processor for authors, adds one thing: **NEO can speak your language.** It ships in eight languages: English, French (reviewed by a native speaker), and Spanish, Portuguese, German, Italian, Dutch and Polish (machine-assisted, native-speaker review welcome). Any other language can be added with a single file, without programming.
 
 Everything else is NEO, unchanged. English users see exactly the same app.
@@ -10,7 +12,7 @@ Everything else is NEO, unchanged. English users see exactly the same app.
 
 NEO is a wonderful tool for writing books, but its interface was English-only, which kept it out of reach of many writers. The goal of this fork is to open it to authors who write in other languages, starting with French, while respecting NEO's philosophy: no bloat, nothing that interrupts the writer, plain files.
 
-This work is offered to the original project. Hugh Howey is free to take all of it, part of it, or just the idea. The changes live on the [`i18n` branch](../../tree/i18n), offered to Hugh Howey as [pull request #94](https://github.com/hughhowey/neo/pull/94).
+This work is offered to the original project. Hugh Howey is free to take all of it, part of it, or just the idea. The translations lived on the [`i18n` branch](../../tree/i18n) and were merged as [pull request #94](https://github.com/hughhowey/neo/pull/94). Each later addition has its own branch, offered one at a time.
 
 It was built with the help of Claude (Anthropic's AI assistant), then tested and reviewed by a French novelist who uses NEO.
 
@@ -85,6 +87,8 @@ Copy `locales/_template.json` to `locales/<code>.json` (for example `es.json`), 
 
 # Version française
 
+> **Désormais intégré à NEO.** Hugh Howey a fusionné les traductions, publiées dans **NEO 0.9.0** ([n° 94](https://github.com/hughhowey/neo/pull/94)), avec le correctif du menu macOS ([n° 95](https://github.com/hughhowey/neo/pull/95)). Téléchargez NEO sur [sa propre page de versions](https://github.com/hughhowey/neo/releases). Ce fork porte maintenant les propositions suivantes : la traduction de la nouvelle fenêtre des raccourcis, le prologue et l'épilogue, et l'accessibilité.
+
 Ce fork de [NEO](https://github.com/hughhowey/neo), le traitement de texte épuré pour auteurs créé par Hugh Howey, ajoute une seule chose : **NEO parle votre langue.** Il est livré en huit langues : anglais, français (relu par un locuteur natif), ainsi qu'espagnol, portugais, allemand, italien, néerlandais et polonais (traductions assistées par IA, relecture par des natifs bienvenue). Toute autre langue s'ajoute avec un simple fichier, sans programmer.
 
 Tout le reste, c'est NEO, inchangé. Les utilisateurs anglophones voient exactement la même application.
@@ -93,7 +97,7 @@ Tout le reste, c'est NEO, inchangé. Les utilisateurs anglophones voient exactem
 
 NEO est un formidable outil d'écriture, mais son interface n'existait qu'en anglais. L'objectif est de l'ouvrir aux auteurs d'autres langues, à commencer par le français, en respectant sa philosophie : pas de superflu, rien qui interrompe l'écriture, des fichiers simples.
 
-Ce travail est proposé au projet d'origine : Hugh Howey est libre d'en reprendre tout, une partie, ou seulement l'idée. Les modifications se trouvent sur la [branche `i18n`](../../tree/i18n), proposée à Hugh Howey sous forme de [demande de fusion n° 94](https://github.com/hughhowey/neo/pull/94).
+Ce travail est proposé au projet d'origine : Hugh Howey est libre d'en reprendre tout, une partie, ou seulement l'idée. Les traductions se trouvaient sur la [branche `i18n`](../../tree/i18n), fusionnée sous forme de [demande de fusion n° 94](https://github.com/hughhowey/neo/pull/94). Chaque ajout suivant a sa propre branche, proposée une à la fois.
 
 Il a été réalisé avec l'aide de Claude (l'assistant IA d'Anthropic), puis testé et relu par un romancier français qui utilise NEO.
 

@@ -1,6 +1,6 @@
-> **Multilingual edition of NEO.** This fork adds interface translations (English and French, with more languages one file away) to Hugh Howey's NEO. Nothing else changes. **[What this fork is and what changed →](FORK.md)**
+> **NEO speaks eight languages since 0.9.0.** This fork's translations were merged into Hugh Howey's NEO; the fork now carries the next proposals (shortcuts window translation, prologue and epilogue, accessibility). **[What this fork is and what changed →](FORK.md)**
 >
-> **Édition multilingue de NEO.** Ce fork ajoute la traduction de l'interface (anglais et français, d'autres langues en un simple fichier) au logiciel NEO de Hugh Howey. **[Lire ce README en français →](README.fr.md)** · [Présentation du fork](FORK.md#version-française)
+> **NEO parle huit langues depuis la 0.9.0.** Les traductions de ce fork ont été intégrées au NEO de Hugh Howey ; le fork porte les propositions suivantes. **[Lire ce README en français →](README.fr.md)** · [Présentation du fork](FORK.md#version-française)
 
 # NEO
 

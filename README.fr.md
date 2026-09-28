@@ -2,7 +2,7 @@
 
 *[Read in English](README.md)*
 
-> **Édition multilingue.** Ce fork ajoute la traduction de l'interface de NEO (anglais et français). [Présentation du fork](FORK.md#version-française). Le texte ci-dessous est la traduction du README de Hugh Howey, l'auteur de NEO : c'est lui qui parle.
+> **NEO parle français depuis la version 0.9.0**, grâce aux traductions de ce fork intégrées par Hugh Howey. Ce fork porte les propositions suivantes (prologue et épilogue, accessibilité). [Présentation du fork](FORK.md#version-française). Le texte ci-dessous est la traduction du README de Hugh Howey, l'auteur de NEO : c'est lui qui parle.
 
 **Un traitement de texte sans distraction pour les auteurs, par un auteur en herbe.**
 
