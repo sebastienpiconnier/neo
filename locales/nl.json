@@ -489,5 +489,10 @@
   "“{title}” is back on the shelf": "‘{title}’ staat weer op de plank",
   "“{title}” is back where it was": "‘{title}’ staat weer op zijn plek",
   "“{title}” now sits on {name}’s top shelf — Esc puts it back": "‘{title}’ staat nu op de bovenste plank van {name}: Esc zet het terug",
-  "“{title}” removed from the shelves — its files are still in your NEO Library": "‘{title}’ van de planken gehaald: de bestanden staan nog in je NEO-bibliotheek"
+  "“{title}” removed from the shelves — its files are still in your NEO Library": "‘{title}’ van de planken gehaald: de bestanden staan nog in je NEO-bibliotheek",
+  "Chapters": "Hoofdstukken",
+  "Title": "Titel",
+  "Outline note": "Notitie bij het plan",
+  "Words written over the last 30 days": "Geschreven woorden in de afgelopen 30 dagen",
+  "Moves between the page, the chapters, the notes and the bottom bar, for the keyboard. Esc comes back to the page.": "Met het toetsenbord van de pagina naar de hoofdstukken, de notities en de onderbalk. Esc gaat terug naar de pagina."
 }

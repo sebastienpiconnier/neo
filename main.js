@@ -1146,6 +1146,14 @@ ipcMain.on('typewriter:state', (_e, on) => {
   typewriterState = on;
   try { buildMenu(); } catch (err) { logError('menu', err); }
 });
+// View → Brighter Interface shows its tick too
+let brightState = false;
+ipcMain.on('bright:state', (_e, on) => {
+  on = !!on;
+  if (on === brightState) return;
+  brightState = on;
+  try { buildMenu(); } catch (err) { logError('menu', err); }
+});
 // File → New Books Open To: the pantser/plotter choice, kept in library.json
 let writingStyle = 'pantser';
 ipcMain.on('style:state', (_e, style) => {
@@ -1346,6 +1354,8 @@ function buildMenu() {
         },
         {
           label: t('Brighter Interface'),
+          type: 'checkbox',
+          checked: brightState,
           click: () => sendToWindow({ type: 'uiBright' })
         },
         { type: 'separator' },
