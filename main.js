@@ -1148,8 +1148,15 @@ ipcMain.on('typewriter:state', (_e, on) => {
   typewriterState = on;
   try { buildMenu(); } catch (err) { logError('menu', err); }
 });
-// View → Brighter Interface shows its tick too
+// View → Brighter Interface shows its tick too, and Interface Size its choice
 let brightState = false;
+let uiZoomState = 1;
+ipcMain.on('uizoom:state', (_e, z) => {
+  z = [1, 1.25, 1.5, 2].includes(z) ? z : 1;
+  if (z === uiZoomState) return;
+  uiZoomState = z;
+  try { buildMenu(); } catch (err) { logError('menu', err); }
+});
 ipcMain.on('bright:state', (_e, on) => {
   on = !!on;
   if (on === brightState) return;
@@ -1373,6 +1380,15 @@ function buildMenu() {
           type: 'checkbox',
           checked: brightState,
           click: () => sendToWindow({ type: 'uiBright' })
+        },
+        {
+          label: t('Interface Size'),
+          submenu: [[1, t('Normal')], [1.25, t('Large (125%)')], [1.5, t('Larger (150%)')], [2, t('Largest (200%)')]].map(([z, label]) => ({
+            label,
+            type: 'radio',
+            checked: uiZoomState === z,
+            click: () => sendToWindow({ type: 'uiZoom', value: z })
+          }))
         },
         { type: 'separator' },
         {

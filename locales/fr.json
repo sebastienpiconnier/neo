@@ -47,7 +47,7 @@
   "Books in your library that aren’t on a shelf": "Livres de votre bibliothèque absents des étagères",
   "Books move to another shelf. Nothing is deleted from disk.": "Les livres passent sur une autre étagère. Rien n’est supprimé du disque.",
   "Brief": "Brief",
-  "Brighter Interface": "Interface plus lumineuse",
+  "Brighter Interface": "Contraste renforcé",
   "Bring All to Front": "Tout ramener au premier plan",
   "Bring your manuscripts home": "Rapatriez vos manuscrits",
   "by {author}": "par {author}",
@@ -509,5 +509,10 @@
   "{name}: {n} words": {
     "one": "{name} : {n} mot",
     "other": "{name} : {n} mots"
-  }
+  },
+  "Interface Size": "Taille de l’interface",
+  "Normal": "Normale",
+  "Large (125%)": "Grande (125 %)",
+  "Larger (150%)": "Très grande (150 %)",
+  "Largest (200%)": "Maximale (200 %)"
 }

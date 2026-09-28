@@ -4825,6 +4825,10 @@ function applyFonts() {
   // the system's "Increase contrast" turns it on too
   document.body.classList.toggle('bright', !!library.uiBright || SYSTEM_CONTRAST.matches);
   if (window.neo.brightState) window.neo.brightState(!!library.uiBright); // the View menu's tick
+  // View → Interface Size: everything but the page
+  const uiZoom = [1, 1.25, 1.5, 2].includes(library.uiZoom) ? library.uiZoom : 1;
+  document.documentElement.style.setProperty('--ui-zoom', uiZoom);
+  if (window.neo.uiZoomState) window.neo.uiZoomState(uiZoom);
   const size = Math.min(22, Math.max(14, library.editorFontSize || 17));
   document.documentElement.style.setProperty('--editor-size', size + 'px');
   const zoom = Math.min(1.6, Math.max(0.75, library.pageZoom || 1));
@@ -5028,7 +5032,7 @@ function showHelp() {
         <h2 id="shortcuts-title">${t('Keyboard shortcuts')}</h2>
       </header>
       <div class="shortcuts-content" tabindex="0" role="region" aria-label="${t('Shortcut reference')}"></div>
-      <footer class="shortcuts-footer">
+      <footer class="shortcuts-footer" role="none">
         <span>${t(K(tk('⌘ Command · ⇧ Shift · ⌥ Option · ⌃ Control'), tk('Ctrl Control · Shift · Alt')))}</span>
         <button class="m-ok btn-gold">${t('Done')}</button>
       </footer>
@@ -5729,6 +5733,11 @@ window.neo.onMenu(async (msg) => {
     flushAllSaves();
     try { if (book && !$('#editor-view').hidden) sessionStorage.setItem('neo-reopen', book.id); } catch { /* a nicety */ }
     setTimeout(() => window.neo.reloadForLanguage(), 400);
+  }
+  if (msg.type === 'uiZoom') {
+    library.uiZoom = msg.value;
+    await window.neo.writeLibrary(library);
+    applyFonts();
   }
   if (msg.type === 'uiBright') {
     library.uiBright = !library.uiBright;

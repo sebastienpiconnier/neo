@@ -83,7 +83,7 @@ NEO parle anglais, français, espagnol, portugais, allemand, italien, néerlanda
 
 ## Accessibilité
 
-**Présentation → Interface plus lumineuse** rend tous les textes lisibles (contraste 4,5:1 du RGAA et du WCAG) ; elle s'active d'elle-même si votre système demande plus de contraste. Au clavier, **F6** passe de la page aux chapitres, aux notes et à la barre du bas, et **Échap** ramène à la page. Les lecteurs d'écran trouvent des boutons, onglets et chapitres nommés. Le réglage « Réduire les animations » du système est respecté.
+**Présentation → Contraste renforcé** rend tous les textes lisibles (contraste 4,5:1 du RGAA et du WCAG) ; il s'active de lui-même si votre système demande plus de contraste. **Présentation → Taille de l'interface** agrandit menus, panneaux et fenêtres jusqu'à 200 %, sans toucher à la page. Au clavier, **F6** passe de la page aux chapitres, aux notes et à la barre du bas, et **Échap** ramène à la page. Les lecteurs d'écran trouvent des boutons, onglets et chapitres nommés. Le réglage « Réduire les animations » du système est respecté.
 
 ## Compiler depuis les sources (pour les curieux)
 
