@@ -788,6 +788,78 @@ body.bright .spell-menu button { color: #eee; }
 .darling button:hover { border-color: var(--accent); color: var(--ink); }
 .darlings-empty { text-align: center; color: #b9b4a8; font-style: italic; padding: 60px 0; }
 
+/* --- Characters tab --- */
+.cast-card {
+  border: 1px solid #e3ddcf; border-left: 3px solid var(--accent);
+  border-radius: 4px; padding: 14px 18px 10px; margin-bottom: 18px;
+}
+.cc-row { display: flex; gap: 18px; }
+.cc-row .cc-field { flex: 1; }
+.cc-field { display: block; margin-bottom: 8px; }
+.cc-field span {
+  display: block; font-family: -apple-system, sans-serif; font-size: 12px;
+  color: #8d8778; letter-spacing: 0.5px;
+}
+.cc-field input {
+  width: 100%; background: none; border: none; border-bottom: 1px dashed #d8d2c2;
+  font-family: var(--body-font); font-size: calc(var(--editor-size, 17px) * 16 / 17 * var(--page-zoom, 1));
+  color: var(--ink); padding: 3px 0; outline: none;
+}
+.cc-field input:focus { border-bottom: 1px solid var(--accent); }
+.cc-field input::placeholder { color: #b9b4a8; font-style: italic; }
+.cc-row .cc-field:first-child input { font-weight: 700; }
+.cc-meta {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  margin-top: 6px; font-family: -apple-system, sans-serif; font-size: 12px; color: #999;
+}
+.cc-del {
+  background: none; border: 1px solid #ccc; border-radius: 4px;
+  font-size: 12px; padding: 3px 10px; color: #777; flex-shrink: 0;
+}
+.cc-del:hover { border-color: var(--red); color: var(--red); }
+.cast-add {
+  display: block; width: 100%; margin-top: 6px; background: none;
+  border: 1px dashed #d8d2c2; border-radius: 6px; color: #8d8778;
+  font-size: 13px; padding: 10px;
+}
+.cast-add:hover { color: var(--ink); border-color: var(--accent); }
+.cast-empty { text-align: center; color: #b9b4a8; font-style: italic; padding: 40px 0 30px; line-height: 1.7; }
+body.night .cast-card { border-color: #3a3835; border-left-color: var(--accent); }
+body.night .cc-field input { color: inherit; border-bottom-color: #4a4742; }
+body.night .cast-add { border-color: #4a4742; }
+
+/* --- Who is in this chapter (Notes & Comments pane) --- */
+#cast-strip { margin: 0 12px 14px; padding-bottom: 12px; border-bottom: 1px solid #2c2c2c; }
+#cast-strip .cs-head { font-size: 12px; color: #777; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+#cast-strip .cs-none { font-size: 12px; color: #666; font-style: italic; }
+.cs-names { display: flex; flex-wrap: wrap; gap: 6px; }
+.cs-name {
+  background: #2a2a26; border: 1px solid #34342f; border-radius: 12px;
+  color: #ccc; font-size: 12px; padding: 3px 10px;
+}
+.cs-name:hover, .cs-name:focus-visible { border-color: var(--accent); color: #eee; }
+.cs-name .cs-count { color: #8a8a8a; margin-left: 2px; }
+
+/* --- The @ list --- */
+#cast-pop {
+  position: fixed; z-index: 900; min-width: 200px; max-width: 320px; max-height: 300px;
+  overflow-y: auto; background: var(--pane); border: 1px solid #3a3a3a; border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.45); padding: 6px 0; color: #ccc;
+  font-size: 13px;
+}
+#cast-pop .cp-who {
+  padding: 6px 14px 2px; font-size: 12px; color: #8a8a8a;
+  text-transform: uppercase; letter-spacing: 1px;
+}
+#cast-pop .cp-opt { padding: 4px 14px 4px 22px; cursor: pointer; border-left: 3px solid transparent; }
+#cast-pop .cp-opt.on { background: #2f2e29; color: #fff; border-left-color: var(--accent); }
+#cast-pop .cp-create { padding-left: 14px; color: var(--accent); border-top: 1px solid #2c2c2c; margin-top: 4px; padding-top: 6px; }
+#cast-pop .cp-foot { padding: 6px 14px 2px; font-size: 12px; color: #666; }
+@media (forced-colors: active) {
+  #cast-pop { border: 1px solid CanvasText; }
+  #cast-pop .cp-opt.on { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+}
+
 /* --- Left nav pane --- */
 #nav-hotzone { position: fixed; left: 0; top: 0; bottom: 40px; width: 18px; z-index: 60; }
 #nav-pane {

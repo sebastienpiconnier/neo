@@ -155,5 +155,22 @@
   "Chapter Titles Only": "Apenas títulos dos capítulos",
   "Chapters are numbered straight through": "Os capítulos são numerados seguidos",
   "Off → paragraph → sentence → off.": "Desligado → parágrafo → frase → desligado.",
-  "Outline note": "Nota do esquema"
+  "Outline note": "Nota do esquema",
+  "First name": "Nome próprio",
+  "Last name": "Apelido",
+  "Nicknames": "Alcunhas",
+  "Delete": "Eliminar",
+  "Delete this character?": "Eliminar esta personagem?",
+  "Characters": "Personagens",
+  "Unnamed": "Sem nome",
+  "New character": "Nova personagem",
+  "Create the character “{name}”": "Criar a personagem “{name}”",
+  "New character: {name}. Their card is in the Characters tab.": "Nova personagem: {name}. A ficha está no separador Personagens.",
+  "Name a character": "Nomear uma personagem",
+  "No character named here yet.": "Nenhuma personagem nomeada aqui ainda.",
+  "No characters yet.": "Ainda não há personagens.",
+  "Add one here, or type @ and a name while you write.": "Adicione uma aqui, ou escreva @ e um nome enquanto escreve.",
+  "Type @ and a few letters, then pick the name. Esc keeps the @.": "Escreva @ e algumas letras, depois escolha o nome. Esc mantém o @.",
+  "Click to go to the next mention": "Clique para ir para a menção seguinte",
+  "A line to remember them by": "Uma linha para a recordar"
 }

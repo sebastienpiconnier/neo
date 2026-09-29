@@ -2914,6 +2914,7 @@ function syncChapter(body, chId) {
   scheduleChapterSave(chId);
   updateCounters();
   scheduleNavRefresh();
+  scheduleCast();
 }
 
 // Heal text-node fragmentation in each paragraph as the caret leaves it:
@@ -3747,6 +3748,7 @@ navList.addEventListener('drop', async (e) => {
 
 function highlightNav() {
   $$('.nav-item').forEach((el) => el.classList.toggle('current', el.dataset.id === currentChapterId));
+  scheduleCast();
 }
 
 function scheduleNavRefresh() {
@@ -4050,6 +4052,7 @@ function switchTab(name) {
   const auxEditor = $('#aux-editor');
   const dList = $('#darlings-list');
   const oList = $('#outline-list');
+  const cList = $('#characters-list');
   const back = tabPlaces[name];
   const returnTo = () => { if (back && typeof back.scroll === 'number') scroller.scrollTop = back.scroll; };
 
@@ -4071,6 +4074,7 @@ function switchTab(name) {
   auxEditor.hidden = true;
   dList.hidden = true;
   oList.hidden = true;
+  cList.hidden = true;
 
   if (name === 'darlings') {
     $('#aux-title').textContent = t('Darlings');
@@ -4078,6 +4082,11 @@ function switchTab(name) {
     renderDarlings();
     returnTo();
     findHere();
+  } else if (name === 'characters') {
+    $('#aux-title').textContent = t('Characters');
+    cList.hidden = false;
+    renderCharacters();
+    returnTo();
   } else if (name === 'outline') {
     $('#aux-title').textContent = tabName('outline');
     oList.hidden = false;
@@ -4589,6 +4598,572 @@ $('#paper-scroll').addEventListener('scroll', () => {
 });
 
 /* ================================================================== */
+/*  CHARACTERS                                                         */
+/* ================================================================== */
+/*  The book keeps a cast: first name, last name, nicknames, a note.   */
+/*  The text itself stays plain words. NEO finds the names in it, so   */
+/*  a name typed by hand counts as much as one picked after an @, and  */
+/*  a rename can reach every page of the book.                         */
+
+const castId = () => 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const castFold = (s) => (s || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+const castKey = (s) => (s || '').replace(/[’‘]/g, "'");
+
+function castList() {
+  if (!book) return [];
+  if (!Array.isArray(book.characters)) book.characters = [];
+  return book.characters;
+}
+
+function charName(c) {
+  return [c.first, c.last].filter(Boolean).join(' ') || (c.nicknames || [])[0] || t('Unnamed');
+}
+
+// every way the book may call a character, the full name first
+function charForms(c) {
+  const out = [];
+  const add = (f) => { f = (f || '').trim(); if (f && !out.includes(f)) out.push(f); };
+  if (c.first && c.last) add(c.first + ' ' + c.last);
+  add(c.first);
+  add(c.last);
+  (c.nicknames || []).forEach(add);
+  return out;
+}
+
+// a whole-word pattern for some names; straight and curly apostrophes match alike
+function formPattern(forms) {
+  const alts = [...forms].sort((a, b) => b.length - a.length)
+    .map((f) => f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/['’‘]/g, "['’‘]"));
+  return new RegExp(`(?<![\\p{L}\\p{N}_])(${alts.join('|')})(?![\\p{L}\\p{N}_])`, 'gu');
+}
+
+let castMatcherCache = { sig: null, re: null, owner: null };
+function castMatcher() {
+  const cast = castList();
+  const sig = JSON.stringify(cast.map((c) => [c.id, charForms(c)]));
+  if (castMatcherCache.sig === sig) return castMatcherCache;
+  const owner = new Map();
+  for (const c of cast) for (const f of charForms(c)) if (!owner.has(castKey(f))) owner.set(castKey(f), c.id);
+  castMatcherCache = { sig, re: owner.size ? formPattern([...owner.keys()]) : null, owner };
+  return castMatcherCache;
+}
+
+// id -> { n, forms: { form: count } }
+function castStats(text) {
+  const out = new Map();
+  const { re, owner } = castMatcher();
+  if (!re || !text) return out;
+  re.lastIndex = 0;
+  let m;
+  while ((m = re.exec(text))) {
+    const id = owner.get(castKey(m[1]));
+    if (!id) continue;
+    const s = out.get(id) || { n: 0, forms: {} };
+    s.n++;
+    s.forms[m[1]] = (s.forms[m[1]] || 0) + 1;
+    out.set(id, s);
+  }
+  return out;
+}
+
+function chapterBodyEl(chId) {
+  return document.querySelector(`.chapter[data-id="${chId}"] .chapter-body`);
+}
+
+// the words of a chapter, a line per paragraph (ghost outline lines left out)
+function chapterPlain(chId) {
+  let body = chapterBodyEl(chId);
+  if (!body) {
+    body = document.createElement('div');
+    body.innerHTML = chapterHTML[chId] || '';
+  }
+  const paras = [...body.children];
+  if (!paras.length) return body.textContent;
+  return paras.filter((p) => !p.classList.contains('ghost')).map((p) => p.textContent).join('\n');
+}
+
+/* --- In the Notes & Comments pane: who is in this chapter ---------- */
+
+let castTimer = null;
+function scheduleCast() {
+  clearTimeout(castTimer);
+  castTimer = setTimeout(renderCast, 400);
+}
+
+function renderCast() {
+  const strip = $('#cast-strip');
+  if (!strip) return;
+  const cast = book ? castList() : [];
+  if (!book || !cast.length || !currentChapterId || !book.chapterOrder.includes(currentChapterId)) {
+    strip.hidden = true;
+    return;
+  }
+  const stats = castStats(chapterPlain(currentChapterId));
+  strip.hidden = false;
+  strip.innerHTML = '';
+  const head = document.createElement('div');
+  head.className = 'cs-head';
+  head.textContent = t('In this chapter');
+  strip.appendChild(head);
+  const present = cast.filter((c) => stats.get(c.id)).sort((a, b) => stats.get(b.id).n - stats.get(a.id).n);
+  if (!present.length) {
+    const none = document.createElement('div');
+    none.className = 'cs-none';
+    none.textContent = t('No character named here yet.');
+    strip.appendChild(none);
+    return;
+  }
+  const names = document.createElement('div');
+  names.className = 'cs-names';
+  for (const c of present) {
+    const s = stats.get(c.id);
+    const b = document.createElement('button');
+    b.className = 'cs-name';
+    b.innerHTML = '<span class="cs-label"></span> <span class="cs-count"></span>';
+    b.querySelector('.cs-label').textContent = charName(c);
+    b.querySelector('.cs-count').textContent = fmtNum(s.n);
+    const used = Object.entries(s.forms).map(([f, n]) => `${f} ×${n}`).join(', ');
+    b.title = used + '\n' + t('Click to go to the next mention');
+    b.setAttribute('aria-label', `${charName(c)}, ${fmtNum(s.n)}. ${used}`);
+    b.onclick = () => jumpToCharacter(c.id);
+    names.appendChild(b);
+  }
+  strip.appendChild(names);
+}
+
+// the next mention after the caret in the current chapter, round to the top
+function jumpToCharacter(id) {
+  const c = castList().find((x) => x.id === id);
+  const body = currentChapterId && chapterBodyEl(currentChapterId);
+  if (!c || !body) return;
+  const re = formPattern(charForms(c));
+  const sel = window.getSelection();
+  let caret = null;
+  if (sel.rangeCount && body.contains(sel.anchorNode)) {
+    caret = sel.getRangeAt(0).cloneRange();
+    caret.collapse(false); // from the end of a selection: a second click moves on
+  }
+  let first = null;
+  let next = null;
+  const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode()) && !next) {
+    if (node.parentElement.closest('.ghost')) continue;
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(node.textContent))) {
+      const r = document.createRange();
+      r.setStart(node, m.index);
+      r.setEnd(node, m.index + m[1].length);
+      if (!first) first = r;
+      if (!caret || caret.comparePoint(node, m.index) >= 0) { next = r; break; }
+    }
+  }
+  const target = next || first;
+  if (!target) return;
+  body.focus({ preventScroll: true });
+  sel.removeAllRanges();
+  sel.addRange(target);
+  const rect = target.getBoundingClientRect();
+  const sr = $('#paper-scroll').getBoundingClientRect();
+  if (rect.top < sr.top + 40 || rect.bottom > sr.bottom - 40) {
+    const el = target.startContainer.parentElement;
+    el.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
+  }
+}
+
+/* --- The Characters tab -------------------------------------------- */
+
+function bookCastStats() {
+  const out = new Map();
+  book.chapterOrder.forEach((chId) => {
+    for (const [id, s] of castStats(chapterPlain(chId))) {
+      const o = out.get(id) || { n: 0, chapters: 0, first: null };
+      o.n += s.n;
+      o.chapters++;
+      if (!o.first) o.first = chId;
+      out.set(id, o);
+    }
+  });
+  return out;
+}
+
+function castMetaText(s) {
+  if (!s) return t('Not in the text yet');
+  return [
+    t('Mentions: {n}', { n: fmtNum(s.n) }),
+    t('Chapters: {n}', { n: fmtNum(s.chapters) }),
+    t('First appears: {ch}', { ch: chapterName(s.first) })
+  ].join(' · ');
+}
+
+function renderCharacters(focusId) {
+  const wrap = $('#characters-list');
+  wrap.innerHTML = '';
+  const cast = castList();
+  const stats = bookCastStats();
+
+  if (!cast.length) {
+    const empty = document.createElement('div');
+    empty.className = 'cast-empty';
+    empty.textContent = t('No characters yet.');
+    const more = document.createElement('div');
+    more.textContent = t('Add one here, or type @ and a name while you write.');
+    empty.appendChild(more);
+    wrap.appendChild(empty);
+  }
+
+  for (const c of cast) wrap.appendChild(characterCard(c, stats.get(c.id)));
+
+  const add = document.createElement('button');
+  add.className = 'cast-add';
+  add.textContent = '+ ' + t('New character');
+  add.onclick = () => addCharacter();
+  wrap.appendChild(add);
+
+  if (focusId) {
+    const input = wrap.querySelector(`.cast-card[data-id="${focusId}"] input`);
+    if (input) input.focus();
+  }
+}
+
+function characterCard(c, s) {
+  const card = document.createElement('div');
+  card.className = 'cast-card';
+  card.dataset.id = c.id;
+  card.innerHTML = `
+    <div class="cc-row">
+      <label class="cc-field"><span>${t('First name')}</span><input data-f="first" spellcheck="false" /></label>
+      <label class="cc-field"><span>${t('Last name')}</span><input data-f="last" spellcheck="false" /></label>
+    </div>
+    <label class="cc-field"><span>${t('Nicknames')}</span><input data-f="nicknames" spellcheck="false" /></label>
+    <label class="cc-field"><span>${t('Note')}</span><input data-f="note" spellcheck="false" /></label>
+    <div class="cc-meta"><span class="cc-stats"></span><button class="cc-del"></button></div>`;
+  card.querySelector('[data-f="nicknames"]').placeholder = t('Separated by commas');
+  card.querySelector('[data-f="note"]').placeholder = t('A line to remember them by');
+  card.querySelector('.cc-stats').textContent = castMetaText(s);
+  const del = card.querySelector('.cc-del');
+  del.textContent = t('Delete');
+  del.onclick = () => deleteCharacter(c);
+  card.querySelectorAll('input').forEach((input) => {
+    const f = input.dataset.f;
+    const shown = () => (f === 'nicknames' ? (c.nicknames || []).join(', ') : (c[f] || ''));
+    input.value = shown();
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); input.value = shown(); input.blur(); }
+    });
+    input.addEventListener('change', () => commitCharacterField(c, f, input, shown));
+  });
+  return card;
+}
+
+function addCharacter(fields) {
+  const c = { id: castId(), first: '', last: '', nicknames: [], note: '', ...(fields || {}) };
+  castList().push(c);
+  scheduleMetaSave();
+  scheduleCast();
+  if (currentTab === 'characters') renderCharacters(c.id);
+  return c;
+}
+
+async function deleteCharacter(c) {
+  const ok = await optionModal(t('Delete this character?'),
+    t('{name} leaves the list. The text of the book is not touched.', { name: escapeHTML(charName(c)) }),
+    [{ label: t('Delete'), value: 'del', danger: true }]);
+  if (ok !== 'del') return;
+  book.characters = castList().filter((x) => x.id !== c.id);
+  scheduleMetaSave();
+  scheduleCast();
+  renderCharacters();
+}
+
+// A changed name can carry the book with it: the writer chooses
+async function commitCharacterField(c, f, input, shown) {
+  let val = input.value.trim();
+  if (f === 'nicknames') val = val.split(/[,;]/).map((x) => x.trim()).filter(Boolean);
+  const pairs = [];
+  if (f === 'first' || f === 'last') {
+    if (c[f] && val && c[f] !== val) pairs.push([c[f], val]);
+  } else if (f === 'nicknames') {
+    const old = c.nicknames || [];
+    if (old.length === val.length) old.forEach((o, i) => { if (o !== val[i]) pairs.push([o, val[i]]); });
+  }
+  const apply = () => { c[f] = val; };
+
+  let choice = 'card';
+  if (pairs.length) {
+    const counts = await Promise.all(pairs.map(([o]) => countInBook(o)));
+    const total = counts.reduce((a, x) => a + x.n, 0);
+    if (total) {
+      const lines = pairs.map(([o, n], i) => counts[i].n
+        ? t('“{old}” → “{new}”: {n} times, in {c} chapters', { old: escapeHTML(o), new: escapeHTML(n), n: fmtNum(counts[i].n), c: fmtNum(counts[i].chapters) })
+        : '').filter(Boolean).join('<br>');
+      choice = await optionModal(t('Rename in the text too?'), lines, [
+        { label: t('Replace everywhere'), desc: t('Chapters, titles, outline and notes. {key} undoes it.', { key: KZ }), value: 'all' },
+        { label: t('Only the card'), desc: t('The text stays as it is.'), value: 'card' }
+      ]);
+    }
+  }
+  if (!choice) { input.value = shown(); return; }
+  if (choice === 'all') {
+    await renameInBook(pairs, apply);
+    renderCharacters();
+    return;
+  }
+  apply();
+  input.value = shown();
+  scheduleMetaSave();
+  scheduleCast();
+  const card = input.closest('.cast-card');
+  if (card) card.querySelector('.cc-stats').textContent = castMetaText(bookCastStats().get(c.id));
+}
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+}
+
+function textNodesOf(root) {
+  const out = [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) out.push(node);
+  return out;
+}
+
+function countIn(text, re) {
+  re.lastIndex = 0;
+  return (text.match(re) || []).length;
+}
+
+async function countInBook(form) {
+  const re = formPattern([form]);
+  let n = 0;
+  let chapters = 0;
+  for (const chId of book.chapterOrder) {
+    const k = countIn(chapterPlain(chId), re);
+    if (k) { n += k; chapters++; }
+  }
+  for (const s of Object.values(book.chapterTitles || {})) n += countIn(s || '', re);
+  for (const s of Object.values(book.chapterNotes || {})) n += countIn(s || '', re);
+  for (const list of Object.values(book.sectionNotes || {})) for (const sec of list) n += countIn(sec.text || '', re);
+  flushAux();
+  const notes = document.createElement('div');
+  notes.innerHTML = (await window.neo.readAux(book.id, 'notes')) || '';
+  n += countIn(notes.textContent, re);
+  return { n, chapters };
+}
+
+async function renameInBook(pairs, mutate) {
+  flushAux();
+  const notesHTML = (await window.neo.readAux(book.id, 'notes')) || '';
+  snapshotStructure(t('Rename'));
+  undoStack[undoStack.length - 1].auxNotes = notesHTML;
+  mutate();
+
+  let n = 0;
+  const swap = (text, re, to) => text.replace(re, () => { n++; return to; });
+  const notes = document.createElement('div');
+  notes.innerHTML = notesHTML;
+  let titlesTouched = false;
+  for (const [from, to] of pairs) {
+    const re = formPattern([from]);
+    const typed = /['’‘]/.test(to) ? to.replace(/'/g, '’') : to;
+    for (const chId of book.chapterOrder) {
+      const body = chapterBodyEl(chId);
+      if (!body) continue;
+      body.normalize();
+      let touched = false;
+      for (const nd of textNodesOf(body)) {
+        re.lastIndex = 0;
+        if (!re.test(nd.textContent)) continue;
+        nd.textContent = swap(nd.textContent, re, typed);
+        touched = true;
+      }
+      if (touched) syncChapter(body, chId);
+    }
+    for (const k of Object.keys(book.chapterTitles || {})) {
+      const v = swap(book.chapterTitles[k] || '', re, typed);
+      if (v !== book.chapterTitles[k]) { book.chapterTitles[k] = v; titlesTouched = true; }
+    }
+    for (const k of Object.keys(book.chapterNotes || {})) book.chapterNotes[k] = swap(book.chapterNotes[k] || '', re, typed);
+    for (const list of Object.values(book.sectionNotes || {})) for (const sec of list) sec.text = swap(sec.text || '', re, typed);
+    for (const nd of textNodesOf(notes)) nd.textContent = swap(nd.textContent, re, typed);
+  }
+  if (notes.innerHTML !== notesHTML) await window.neo.writeAux(book.id, 'notes', notes.innerHTML);
+  await saveMeta();
+  if (titlesTouched) renderChapters();
+  renderNav();
+  scheduleCast();
+  toast(n ? t('{n} replaced across the whole book — {key} to undo', { n, key: KZ }) : t('0 replaced'));
+}
+
+/* --- @ while writing: pick a character, and which of their names --- */
+
+let castPop = null;       // { el, options, index, host }
+let castDismissed = null; // the @ the writer sent away with Esc
+
+function castContext() {
+  const sel = window.getSelection();
+  if (!book || !sel.rangeCount || !sel.isCollapsed) return null;
+  const node = sel.anchorNode;
+  if (!node || node.nodeType !== Node.TEXT_NODE) return null;
+  const host = node.parentElement && node.parentElement.closest('.chapter-body, #aux-editor');
+  if (!host) return null;
+  const before = node.textContent.slice(0, sel.anchorOffset);
+  const m = before.match(/(?:^|[^\p{L}\p{N}_@.])@([\p{L}\p{N}'’\-]{0,30}(?: [\p{L}\p{N}'’\-]{0,30})?)$/u);
+  if (!m) return null;
+  return { node, at: before.length - m[1].length - 1, end: sel.anchorOffset, query: m[1], host };
+}
+
+function castOptions(query) {
+  const q = castFold(castKey(query.trim()));
+  const options = [];
+  let exact = false;
+  let shown = 0;
+  for (const c of castList()) {
+    const forms = charForms(c);
+    const hit = forms.findIndex((f) => {
+      const ff = castFold(castKey(f));
+      return !q || ff.startsWith(q) || ff.split(/[\s'-]+/).some((w) => w.startsWith(q));
+    });
+    if (hit < 0) continue;
+    if (shown++ >= 6) break;
+    forms.forEach((form, i) => {
+      if (castFold(castKey(form)) === q) exact = true;
+      options.push({ kind: 'form', c, form, first: i === 0, best: i === hit });
+    });
+  }
+  if (q && !exact) options.push({ kind: 'create', name: query.trim() });
+  return options;
+}
+
+function closeCastPop() {
+  if (!castPop) return;
+  castPop.el.remove();
+  castPop.host.removeAttribute('aria-activedescendant');
+  castPop = null;
+}
+
+function updateCastPop(fromTyping) {
+  const ctx = castContext();
+  if (!ctx) return closeCastPop();
+  if (castDismissed && castDismissed.node === ctx.node && castDismissed.at === ctx.at) return closeCastPop();
+  if (!castPop && !fromTyping) return;
+  const options = castOptions(ctx.query);
+  if (!options.length) return closeCastPop();
+  if (castPop && castPop.host !== ctx.host) closeCastPop();
+
+  let el = castPop && castPop.el;
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'cast-pop';
+    el.setAttribute('role', 'listbox');
+    el.setAttribute('aria-label', t('Characters'));
+    el.addEventListener('mousedown', (e) => e.preventDefault()); // the caret stays in the text
+    document.body.appendChild(el);
+  }
+  el.innerHTML = '';
+  let index = Math.max(0, options.findIndex((o) => o.best));
+  options.forEach((o, i) => {
+    if (o.kind === 'form' && o.first) {
+      const who = document.createElement('div');
+      who.className = 'cp-who';
+      who.textContent = charName(o.c);
+      el.appendChild(who);
+    }
+    const opt = document.createElement('div');
+    opt.className = 'cp-opt' + (o.kind === 'create' ? ' cp-create' : '');
+    opt.id = 'cp-o' + i;
+    opt.setAttribute('role', 'option');
+    opt.textContent = o.kind === 'create' ? t('Create the character “{name}”', { name: o.name }) : o.form;
+    opt.onclick = () => chooseCastOption(i);
+    el.appendChild(opt);
+  });
+  const foot = document.createElement('div');
+  foot.className = 'cp-foot';
+  foot.textContent = t('Enter to insert · Esc keeps the @');
+  el.appendChild(foot);
+  castPop = { el, options, index, host: ctx.host };
+  markCastOption();
+
+  // under the @, or above it near the bottom of the window
+  const r = document.createRange();
+  r.setStart(ctx.node, ctx.at);
+  r.setEnd(ctx.node, Math.min(ctx.at + 1, ctx.node.length));
+  const rect = r.getBoundingClientRect();
+  const h = el.offsetHeight;
+  const w = el.offsetWidth;
+  const top = rect.bottom + 6 + h > window.innerHeight - 44 ? rect.top - h - 6 : rect.bottom + 6;
+  el.style.top = Math.max(8, top) + 'px';
+  el.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - w - 8)) + 'px';
+}
+
+function markCastOption() {
+  if (!castPop) return;
+  castPop.el.querySelectorAll('.cp-opt').forEach((o) => {
+    const on = o.id === 'cp-o' + castPop.index;
+    o.classList.toggle('on', on);
+    o.setAttribute('aria-selected', on ? 'true' : 'false');
+    if (on) o.scrollIntoView({ block: 'nearest' });
+  });
+  castPop.host.setAttribute('aria-activedescendant', 'cp-o' + castPop.index);
+}
+
+function chooseCastOption(i) {
+  const o = castPop && castPop.options[i];
+  const ctx = castContext();
+  closeCastPop();
+  if (!o || !ctx) return;
+  let text;
+  if (o.kind === 'create') {
+    const words = o.name.split(/\s+/);
+    const c = addCharacter({ first: words[0], last: words.slice(1).join(' ') });
+    text = o.name;
+    toast(t('New character: {name}. Their card is in the Characters tab.', { name: charName(c) }));
+  } else {
+    text = o.form;
+  }
+  if (/'/.test(text)) text = text.replace(/'/g, '’');
+  const r = document.createRange();
+  r.setStart(ctx.node, ctx.at);
+  r.setEnd(ctx.node, ctx.end);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(r);
+  document.execCommand('insertText', false, text);
+}
+
+// ahead of every other key handler while the list is open
+window.addEventListener('keydown', (e) => {
+  if (!castPop) return;
+  const n = castPop.options.length;
+  let handled = true;
+  if (e.key === 'ArrowDown') castPop.index = (castPop.index + 1) % n;
+  else if (e.key === 'ArrowUp') castPop.index = (castPop.index + n - 1) % n;
+  else if (e.key === 'Enter' || e.key === 'Tab') chooseCastOption(castPop.index);
+  else if (e.key === 'Escape') {
+    const ctx = castContext();
+    if (ctx) castDismissed = { node: ctx.node, at: ctx.at };
+    closeCastPop();
+  } else handled = false;
+  if (!handled) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  markCastOption();
+}, true);
+
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.closest && e.target.closest('.chapter-body, #aux-editor')) updateCastPop(true);
+});
+document.addEventListener('selectionchange', () => { if (castPop) updateCastPop(false); });
+document.addEventListener('focusout', () => setTimeout(() => {
+  if (castPop && !castPop.host.contains(document.activeElement)) closeCastPop();
+}, 0));
+$('#paper-scroll').addEventListener('scroll', closeCastPop, { passive: true });
+
+
+/* ================================================================== */
 /*  SAVING                                                             */
 /* ================================================================== */
 
@@ -5002,7 +5577,8 @@ function snapshotStructure(label, opts) {
     chapterNotes: { ...(book.chapterNotes || {}) },
     sectionNotes: JSON.parse(JSON.stringify(book.sectionNotes || {})),
     darlings: JSON.parse(JSON.stringify(darlings)),
-    stickies: JSON.parse(JSON.stringify(stickies))
+    stickies: JSON.parse(JSON.stringify(stickies)),
+    characters: JSON.parse(JSON.stringify(book.characters || []))
   });
   if (undoStack.length > 10) undoStack.shift();
 }
@@ -5020,6 +5596,9 @@ async function structuralUndo() {
   book.sectionNotes = snap.sectionNotes;
   darlings = snap.darlings;
   stickies = snap.stickies;
+  if (snap.characters) book.characters = snap.characters;
+  // a rename across the book also rewrote the Notes tab
+  if (typeof snap.auxNotes === 'string') await window.neo.writeAux(book.id, 'notes', snap.auxNotes);
   // resurrect any chapter files the action may have deleted
   for (const chId of book.chapterOrder) {
     await persistChapter(chId, chapterHTML[chId] || '<p><br></p>');
@@ -5032,6 +5611,8 @@ async function structuralUndo() {
   renderStickies();
   if (currentTab === 'darlings') renderDarlings();
   if (currentTab === 'outline') renderOutline();
+  if (currentTab === 'characters') renderCharacters();
+  scheduleCast();
   updateCounters();
   restoreCaret(snap.caret); // back to work, no announcement
   if (snap.rejoin) rejoinAtCaret();
@@ -6161,7 +6742,8 @@ function shortcutSections() {
       [tk('Enter ×3'), tk('Start a new chapter')],
       [K('⇧Enter', 'Shift+Enter'), tk('Start or continue a poetry paragraph'), tk('Also works from a chapter heading.')],
       [KPH, tk('Insert a placeholder note')],
-      [KDA, tk('Move selected text to Darlings')]
+      [KDA, tk('Move selected text to Darlings')],
+      [['@'], tk('Name a character'), tk('Type @ and a few letters, then pick the name. Esc keeps the @.')]
     ] },
     { title: tk('Formatting'), rows: [
       [K('⌘B', 'Ctrl+B'), tk('Bold')],
