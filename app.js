@@ -2172,6 +2172,7 @@ function wireChapterBody(body, chId) {
     if (spellOn) scheduleSpellRescan(chId, body);
     updateCounters();
     scheduleNavRefresh();
+    scheduleCast(); // who is in this chapter follows the typing
   });
   // paste without formatting
   body.addEventListener('paste', (e) => {
