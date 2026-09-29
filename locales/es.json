@@ -424,7 +424,6 @@
   "Today's words — click for goals, sprints, and your progress chart": "Palabras de hoy: haz clic para ver objetivos, sprints y tu gráfico de progreso",
   "total": "total",
   "total words": "palabras en total",
-  "Typed around a word (or pasted). Undo right after keeps the asterisks.": "Alrededor de una palabra, escrito o pegado. Deshacer justo después conserva los asteriscos.",
   "Typewriter Scrolling": "Desplazamiento de máquina de escribir",
   "Typewriter scrolling off": "Desplazamiento de máquina de escribir desactivado",
   "Typewriter scrolling ON — your line stays centered": "Desplazamiento de máquina de escribir ACTIVADO: tu línea queda centrada",
@@ -605,5 +604,9 @@
   "Enter to insert · Esc keeps the @": "Intro para insertar · Esc conserva la @",
   "New character: {name}. Their card is in the Characters tab.": "Nuevo personaje: {name}. Su ficha está en la pestaña Personajes.",
   "Name a character": "Nombrar a un personaje",
-  "Type @ and a few letters, then pick the name. Esc keeps the @.": "Escribe @ y unas letras, luego elige el nombre. Esc conserva la @."
+  "Type @ and a few letters, then pick the name. Esc keeps the @.": "Escribe @ y unas letras, luego elige el nombre. Esc conserva la @.",
+  "Typed around a word (or pasted). Undo right after keeps the asterisks. Format → Markdown Emphasis turns it off.": "Alrededor de una palabra, escrito o pegado. Deshacer justo después conserva los asteriscos. Formato → Énfasis Markdown lo desactiva.",
+  "Markdown Emphasis": "Énfasis Markdown",
+  "Markdown emphasis on: *italic*, **bold**": "Énfasis Markdown activado: *cursiva*, **negrita**",
+  "Markdown emphasis off: asterisks stay asterisks": "Énfasis Markdown desactivado: los asteriscos se quedan como asteriscos"
 }
