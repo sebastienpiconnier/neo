@@ -1440,7 +1440,10 @@ function wireChapterBody(body, chId) {
       const parts = text.replace(/\r/g, '').split(/\n+/).filter((p) => p.trim());
       parts.forEach((p, i) => {
         if (i > 0) document.execCommand('insertParagraph');
-        document.execCommand('insertText', false, p.trim());
+        // plain text written in Markdown keeps its *italics* and **bold**
+        const styled = markdownInline(p.trim());
+        if (styled) document.execCommand('insertHTML', false, styled);
+        else document.execCommand('insertText', false, p.trim());
       });
     }
   });
@@ -2277,6 +2280,82 @@ function cleanPasteHtml(html) {
 }
 
 // Em dash, ellipsis, smart quotes:
+// Markdown emphasis, for writers whose fingers already know it: typing the
+// closing * of *word* sets it in italic, the closing ** of **word** in bold
+// (_word_ and __word__ too). Only in the manuscript and Notes, only when the
+// marks hug a word the way Markdown wants them to, so 2 * 3, f***, a lone
+// footnote * or a snake_case name stay as typed. ⌘Z right after gives the
+// marks back as plain characters.
+const escRe = (c) => c.replace(/\*/g, '\\*');
+function mdEmphasisMatch(before, mark) {
+  const m = escRe(mark);
+  const edge = `(^|[^\\p{L}\\p{N}${m}\\\\])`;
+  const inner = `(?!\\s|${m})([^${m}]*?[^\\s${m}\\\\])`;
+  let r = before.match(new RegExp(`${edge}${m}${m}${inner}${m}$`, 'u'));
+  if (r) return { bold: true, inner: r[2], len: r[0].length - r[1].length };
+  r = before.match(new RegExp(`${edge}${m}${inner}$`, 'u'));
+  if (r) return { bold: false, inner: r[2], len: r[0].length - r[1].length };
+  return null;
+}
+// A pasted line of Markdown as HTML with <b> and <i>, or null when it has
+// no emphasis (so ordinary text keeps pasting as text). Same rules as typing.
+function markdownInline(line) {
+  const edge = '(^|[^\\p{L}\\p{N}*_\\\\])';
+  const tail = '(?![\\p{L}\\p{N}])';
+  let html = escHtml(line);
+  const before = html;
+  html = html.replace(new RegExp(`${edge}(\\*\\*|__)(?!\\s)(.+?)(?<![\\s\\\\])\\2${tail}`, 'gu'), '$1<b>$3</b>');
+  html = html.replace(new RegExp(`${edge}(\\*|_)(?![\\s*_])(.+?)(?<![\\s\\\\*_])\\2${tail}`, 'gu'), '$1<i>$3</i>');
+  return html === before ? null : html;
+}
+let mdJustSet = null; // the marks just turned into styling, for ⌘Z
+function markdownEmphasis(e, body, range) {
+  if (e.key !== '*' && e.key !== '_') return false;
+  if (!body.matches || !body.matches('.chapter-body, #aux-editor')) return false;
+  if (!range.collapsed || range.startContainer.nodeType !== Node.TEXT_NODE) return false;
+  const node = range.startContainer;
+  const at = range.startOffset;
+  const hit = mdEmphasisMatch(node.textContent.slice(0, at), e.key);
+  if (!hit) return false;
+  e.preventDefault();
+  const r = document.createRange();
+  r.setStart(node, at - hit.len);
+  r.setEnd(node, at);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(r);
+  // the marks go, the word stays, and gets the same styling ⌘I or ⌘B gives
+  document.execCommand('insertText', false, hit.inner);
+  const now = sel.getRangeAt(0);
+  if (now.startContainer.nodeType === Node.TEXT_NODE && now.startOffset >= hit.inner.length) {
+    const word = document.createRange();
+    word.setStart(now.startContainer, now.startOffset - hit.inner.length);
+    word.setEnd(now.startContainer, now.startOffset);
+    sel.removeAllRanges();
+    sel.addRange(word);
+  }
+  const cmd = hit.bold ? 'bold' : 'italic';
+  if (!document.queryCommandState(cmd)) document.execCommand(cmd);
+  sel.collapseToEnd();
+  // what comes next is typed plain again
+  if (document.queryCommandState(cmd)) document.execCommand(cmd);
+  mdJustSet = { closing: hit.bold ? e.key + e.key : e.key };
+  return true;
+}
+// ⌘Z (Ctrl+Z) right after: the styling goes and the marks come back as typed
+document.addEventListener('keydown', (e) => {
+  const just = mdJustSet;
+  mdJustSet = null;
+  if (!just || !(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey || e.code !== 'KeyZ') return;
+  e.preventDefault();
+  e.stopPropagation();
+  document.execCommand('undo'); // the styling
+  document.execCommand('undo'); // the marks' removal
+  const sel = window.getSelection();
+  if (sel.rangeCount) sel.collapseToEnd(); // undo leaves the old marks selected
+  document.execCommand('insertText', false, just.closing);
+}, true);
+
 function smartKeys(e, body) {
   // a field can reach smartKeys twice (its own handler and the page-wide
   // one below): the first pass wins
@@ -2295,6 +2374,7 @@ function smartKeys(e, body) {
     return node.textContent.slice(Math.max(0, range.startOffset - n), range.startOffset);
   };
 
+  if (markdownEmphasis(e, body, range)) return;
   if (e.key === '-' && prevChars(1) === '-') {
     e.preventDefault();
     document.execCommand('delete');
@@ -5293,6 +5373,7 @@ function shortcutSections() {
     { title: tk('Formatting'), rows: [
       [K('⌘B', 'Ctrl+B'), tk('Bold')],
       [K('⌘I', 'Ctrl+I'), tk('Italic')],
+      [['*…*', '**…**'], tk('Italic, bold, the Markdown way'), tk('Typed around a word (or pasted). Undo right after keeps the asterisks.')],
       [K('⌘⇧L', 'Ctrl+Shift+L'), tk('Align paragraph left')],
       [K('⌘⇧C', 'Ctrl+Shift+C'), tk('Center paragraph')],
       [K('⌘⇧R', 'Ctrl+Shift+R'), tk('Align paragraph right')],
