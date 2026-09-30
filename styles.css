@@ -1529,3 +1529,15 @@ body.light.bright .nav-gap .ng-plus { color: #5f5b53; border-color: #8f897e; }
 body.light.bright .pop-menu button:disabled { color: #77726a; }
 body.light.bright .show-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.3); }
 body.light.bright .show-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.45); }
+
+/* Characters in the light interface */
+body.light #cast-strip { border-bottom-color: #dedad2; }
+body.light #cast-strip .cs-head { color: #857f73; }
+body.light #cast-strip .cs-none { color: #8f8a80; }
+body.light .cs-name { background: #fbf5e3; border-color: #e6dfcd; color: #3a362f; }
+body.light .cs-name:hover, body.light .cs-name:focus-visible { border-color: var(--accent); color: #1c1a17; }
+body.light .cs-name .cs-count { color: #857f73; }
+body.light #cast-pop { background: #fbfaf8; border-color: #dcd7ce; color: #3a362f; box-shadow: 0 10px 30px rgba(0,0,0,0.16); }
+body.light #cast-pop .cp-who, body.light #cast-pop .cp-foot { color: #857f73; }
+body.light #cast-pop .cp-opt.on { background: #f1ebdc; color: #1c1a17; }
+body.light #cast-pop .cp-create { border-top-color: #e6e1d7; }
