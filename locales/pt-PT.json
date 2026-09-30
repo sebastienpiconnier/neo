@@ -174,5 +174,14 @@
   "Stop writing and move around the page": "Parar de escrever e deslocar-se pela página",
   "Down or up half a screen": "Meio ecrã para baixo ou para cima",
   "Write in a new paragraph below or above": "Escrever num novo parágrafo abaixo ou acima",
-  "Move to stretch it, then y to copy or d to cut.": "Desloque-se para a alargar; depois y para copiar ou d para cortar."
+  "Move to stretch it, then y to copy or d to cut.": "Desloque-se para a alargar; depois y para copiar ou d para cortar.",
+  "Shared by every part of this bound book.": "Partilhados por todas as partes deste livro encadernado.",
+  "Personality": "Personalidade",
+  "Traits, habits, the way they talk": "Traços, manias, forma de falar",
+  "Characters imported: {n}": "Personagens importadas: {n}",
+  "No other book has characters yet.": "Nenhum outro livro tem personagens ainda.",
+  "They arrive as copies: changing them here leaves the other book as it is.": "Chegam como cópias: alterá-las aqui não muda o outro livro.",
+  "What they chase": "O que persegue",
+  "What they truly need": "Aquilo de que realmente precisa",
+  "What holds them back": "O que a trava"
 }

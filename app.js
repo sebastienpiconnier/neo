@@ -2122,6 +2122,7 @@ async function openBook(bookId) {
   if (!book) return;
   currentChapterId = null; // never carry a chapter reference across books
   undoStack = [];
+  castPeers = [];
   chapterHTML = {};
   savedHTML = {};
   diskStamps = {};
@@ -2144,6 +2145,7 @@ async function openBook(bookId) {
   $$('.tab[data-tab="outline"]')[0].textContent = tabName('outline');
 
   renderChapters();
+  syncCastOnOpen(); // a bound book's parts share their characters
   renderStickies();
   migrateDarlingAnchors(); // sweep legacy invisible markers out of the prose
   reconcileMarks();        // re-adopt any note marks orphaned by cut/paste
@@ -5618,13 +5620,40 @@ function renderCharacters(focusId) {
   add.className = 'cast-add';
   add.textContent = '+ ' + t('New character');
   add.onclick = () => addCharacter();
-  wrap.appendChild(add);
+  const imp = document.createElement('button');
+  imp.className = 'cast-import-btn';
+  imp.textContent = t('Import from another book…');
+  imp.onclick = () => importCharacters();
+  const actions = document.createElement('div');
+  actions.className = 'cast-actions';
+  actions.append(add, imp);
+  wrap.appendChild(actions);
+  if (castPeers.length) {
+    const shared = document.createElement('div');
+    shared.className = 'cast-shared';
+    shared.textContent = t('Shared by every part of this bound book.');
+    wrap.insertBefore(shared, wrap.firstChild);
+  }
 
   if (focusId) {
     const input = wrap.querySelector(`.cast-card[data-id="${focusId}"] input`);
     if (input) input.focus();
   }
 }
+
+// the fuller card, folded away: [field, label, placeholder, long]
+const CAST_DETAILS = [
+  ['role', tk('Role'), tk('Protagonist, antagonist, secondary…'), false],
+  ['age', tk('Age'), '', false],
+  ['looks', tk('Appearance'), tk('Face, build, clothes, the detail you notice first'), true],
+  ['traits', tk('Personality'), tk('Traits, habits, the way they talk'), true],
+  ['want', tk('Want'), tk('What they chase'), true],
+  ['need', tk('Need'), tk('What they truly need'), true],
+  ['flaw', tk('Flaw'), tk('What holds them back'), true],
+  ['past', tk('Backstory'), '', true],
+  ['ties', tk('Relationships'), tk('Sister of…, rival of…'), true],
+  ['notes', tk('Notes'), tk('Anything else'), true]
+];
 
 function characterCard(c, s) {
   const card = document.createElement('div');
@@ -5637,31 +5666,86 @@ function characterCard(c, s) {
     </div>
     <label class="cc-field"><span>${t('Nicknames')}</span><input data-f="nicknames" spellcheck="false" /></label>
     <label class="cc-field"><span>${t('Note')}</span><input data-f="note" spellcheck="false" /></label>
-    <div class="cc-meta"><span class="cc-stats"></span><button class="cc-del"></button></div>`;
+    <div class="cc-details"></div>
+    <div class="cc-meta"><span class="cc-stats"></span><span class="cc-buttons"><button class="cc-more" aria-expanded="false"></button><button class="cc-del"></button></span></div>`;
   card.querySelector('[data-f="nicknames"]').placeholder = t('Separated by commas');
   card.querySelector('[data-f="note"]').placeholder = t('A line to remember them by');
   card.querySelector('.cc-stats').textContent = castMetaText(s);
+
+  // role and age share a row; the rest stack. Filled fields always show;
+  // "More details" brings out the empty ones.
+  const details = card.querySelector('.cc-details');
+  const pair = document.createElement('div');
+  pair.className = 'cc-row';
+  details.appendChild(pair);
+  for (const [f, label, ph, long] of CAST_DETAILS) {
+    const field = document.createElement('label');
+    field.className = 'cc-field cc-detail' + (f === 'age' ? ' cc-age' : '');
+    field.dataset.f = f;
+    const span = document.createElement('span');
+    span.textContent = t(label);
+    const el = document.createElement(long ? 'textarea' : 'input');
+    el.dataset.f = f;
+    el.spellcheck = false;
+    if (long) el.rows = 1;
+    if (ph) el.placeholder = t(ph);
+    field.append(span, el);
+    (f === 'role' || f === 'age' ? pair : details).appendChild(field);
+  }
+  const more = card.querySelector('.cc-more');
+  const showDetails = (all) => {
+    card.classList.toggle('cc-open', all);
+    more.textContent = all ? t('Fewer details') : t('More details');
+    more.setAttribute('aria-expanded', all ? 'true' : 'false');
+    card.querySelectorAll('.cc-detail').forEach((fd) => {
+      fd.hidden = !all && !(c[fd.dataset.f] || '').trim();
+    });
+    pair.hidden = !all && !(c.role || c.age);
+    card.querySelectorAll('textarea').forEach(growField);
+  };
+  more.onclick = () => {
+    const open = !card.classList.contains('cc-open');
+    showDetails(open);
+    if (open) { const first = card.querySelector('.cc-detail:not([hidden]) input, .cc-detail:not([hidden]) textarea'); if (first && !first.value) first.focus(); }
+  };
+
   const del = card.querySelector('.cc-del');
   del.textContent = t('Delete');
   del.onclick = () => deleteCharacter(c);
-  card.querySelectorAll('input').forEach((input) => {
+  card.querySelectorAll('input, textarea').forEach((input) => {
     const f = input.dataset.f;
     const shown = () => (f === 'nicknames' ? (c.nicknames || []).join(', ') : (c[f] || ''));
     input.value = shown();
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+      if (e.key === 'Enter' && input.tagName === 'INPUT') { e.preventDefault(); input.blur(); }
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); input.value = shown(); input.blur(); }
     });
+    if (input.tagName === 'TEXTAREA') input.addEventListener('input', () => growField(input));
     input.addEventListener('change', () => commitCharacterField(c, f, input, shown));
   });
+  requestAnimationFrame(() => showDetails(card.classList.contains('cc-open')));
+  showDetails(false);
   return card;
+}
+
+function growField(el) {
+  if (!el.isConnected) return;
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
+// every change to the cast: saved, shared with a bound book's other parts,
+// and shown in the Notes & Comments pane
+function castChanged() {
+  scheduleMetaSave();
+  scheduleCastShare();
+  scheduleCast();
 }
 
 function addCharacter(fields) {
   const c = { id: castId(), first: '', last: '', nicknames: [], note: '', ...(fields || {}) };
   castList().push(c);
-  scheduleMetaSave();
-  scheduleCast();
+  castChanged();
   if (currentTab === 'characters') renderCharacters(c.id);
   return c;
 }
@@ -5672,8 +5756,9 @@ async function deleteCharacter(c) {
     [{ label: t('Delete'), value: 'del', danger: true }]);
   if (ok !== 'del') return;
   book.characters = castList().filter((x) => x.id !== c.id);
-  scheduleMetaSave();
-  scheduleCast();
+  // remembered, so a bound part that still has the card doesn't bring it back
+  book.castRemoved = [...new Set([...(book.castRemoved || []), c.id])];
+  castChanged();
   renderCharacters();
 }
 
@@ -5695,9 +5780,10 @@ async function commitCharacterField(c, f, input, shown) {
     const counts = await Promise.all(pairs.map(([o]) => countInBook(o)));
     const total = counts.reduce((a, x) => a + x.n, 0);
     if (total) {
-      const lines = pairs.map(([o, n], i) => counts[i].n
+      let lines = pairs.map(([o, n], i) => counts[i].n
         ? t('“{old}” → “{new}”: {n} times, in {c} chapters', { old: escapeHTML(o), new: escapeHTML(n), n: fmtNum(counts[i].n), c: fmtNum(counts[i].chapters) })
         : '').filter(Boolean).join('<br>');
+      if (counts.some((x) => x.parts)) lines += '<br>' + t('The other parts of this bound book are included.');
       choice = await optionModal(t('Rename in the text too?'), lines, [
         { label: t('Replace everywhere'), desc: t('Chapters, titles, outline and notes. {key} undoes it.', { key: KZ }), value: 'all' },
         { label: t('Only the card'), desc: t('The text stays as it is.'), value: 'card' }
@@ -5712,8 +5798,7 @@ async function commitCharacterField(c, f, input, shown) {
   }
   apply();
   input.value = shown();
-  scheduleMetaSave();
-  scheduleCast();
+  castChanged();
   const card = input.closest('.cast-card');
   if (card) card.querySelector('.cc-stats').textContent = castMetaText(bookCastStats().get(c.id));
 }
@@ -5735,6 +5820,31 @@ function countIn(text, re) {
   return (text.match(re) || []).length;
 }
 
+// titles, outline lines and section notes of a book's meta
+function metaStrings(m) {
+  const out = [];
+  for (const k of Object.keys(m.chapterTitles || {})) out.push([m.chapterTitles, k]);
+  for (const k of Object.keys(m.chapterNotes || {})) out.push([m.chapterNotes, k]);
+  for (const list of Object.values(m.sectionNotes || {})) for (const sec of list) out.push([sec, 'text']);
+  return out;
+}
+
+// a bound book's other parts, read from disk: meta, chapters, notes
+async function readPeer(id) {
+  const meta = await window.neo.readBookMeta(id);
+  if (!meta) return null;
+  const chapters = {};
+  for (const chId of meta.chapterOrder || []) chapters[chId] = (await window.neo.readChapter(id, chId)) || '';
+  return { id, meta, chapters, notes: (await window.neo.readAux(id, 'notes')) || '' };
+}
+
+function plainOf(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html || '';
+  const paras = [...d.children];
+  return paras.length ? paras.map((x) => x.textContent).join('\n') : d.textContent;
+}
+
 async function countInBook(form) {
   const re = formPattern([form]);
   let n = 0;
@@ -5743,27 +5853,45 @@ async function countInBook(form) {
     const k = countIn(chapterPlain(chId), re);
     if (k) { n += k; chapters++; }
   }
-  for (const s of Object.values(book.chapterTitles || {})) n += countIn(s || '', re);
-  for (const s of Object.values(book.chapterNotes || {})) n += countIn(s || '', re);
-  for (const list of Object.values(book.sectionNotes || {})) for (const sec of list) n += countIn(sec.text || '', re);
+  for (const [o, k] of metaStrings(book)) n += countIn(o[k] || '', re);
   flushAux();
-  const notes = document.createElement('div');
-  notes.innerHTML = (await window.neo.readAux(book.id, 'notes')) || '';
-  n += countIn(notes.textContent, re);
-  return { n, chapters };
+  n += countIn(plainOf(await window.neo.readAux(book.id, 'notes')), re);
+  let parts = 0;
+  for (const id of castPeers) {
+    const peer = await readPeer(id);
+    if (!peer) continue;
+    let hit = 0;
+    for (const html of Object.values(peer.chapters)) {
+      const k = countIn(plainOf(html), re);
+      if (k) { hit += k; chapters++; }
+    }
+    for (const [o, k] of metaStrings(peer.meta)) hit += countIn(o[k] || '', re);
+    hit += countIn(plainOf(peer.notes), re);
+    if (hit) { n += hit; parts++; }
+  }
+  return { n, chapters, parts };
 }
 
 async function renameInBook(pairs, mutate) {
   flushAux();
   const notesHTML = (await window.neo.readAux(book.id, 'notes')) || '';
+  const peers = [];
+  for (const id of castPeers) { const p = await readPeer(id); if (p) peers.push(p); }
   snapshotStructure(t('Rename'));
-  undoStack[undoStack.length - 1].auxNotes = notesHTML;
+  const snap = undoStack[undoStack.length - 1];
+  snap.auxNotes = notesHTML;
+  snap.peers = JSON.parse(JSON.stringify(peers)); // the other parts as they were
   mutate();
 
   let n = 0;
   const swap = (text, re, to) => text.replace(re, () => { n++; return to; });
-  const notes = document.createElement('div');
-  notes.innerHTML = notesHTML;
+  const swapHTML = (html, re, to) => {
+    const d = document.createElement('div');
+    d.innerHTML = html;
+    for (const nd of textNodesOf(d)) { re.lastIndex = 0; if (re.test(nd.textContent)) nd.textContent = swap(nd.textContent, re, to); }
+    return d.innerHTML;
+  };
+  let notes = notesHTML;
   let titlesTouched = false;
   for (const [from, to] of pairs) {
     const re = formPattern([from]);
@@ -5781,20 +5909,184 @@ async function renameInBook(pairs, mutate) {
       }
       if (touched) syncChapter(body, chId);
     }
-    for (const k of Object.keys(book.chapterTitles || {})) {
-      const v = swap(book.chapterTitles[k] || '', re, typed);
-      if (v !== book.chapterTitles[k]) { book.chapterTitles[k] = v; titlesTouched = true; }
+    for (const [o, k] of metaStrings(book)) {
+      const v = swap(o[k] || '', re, typed);
+      if (v !== (o[k] || '')) { if (o === book.chapterTitles) titlesTouched = true; o[k] = v; }
     }
-    for (const k of Object.keys(book.chapterNotes || {})) book.chapterNotes[k] = swap(book.chapterNotes[k] || '', re, typed);
-    for (const list of Object.values(book.sectionNotes || {})) for (const sec of list) sec.text = swap(sec.text || '', re, typed);
-    for (const nd of textNodesOf(notes)) nd.textContent = swap(nd.textContent, re, typed);
+    notes = swapHTML(notes, re, typed);
+    for (const peer of peers) {
+      for (const chId of Object.keys(peer.chapters)) peer.chapters[chId] = swapHTML(peer.chapters[chId], re, typed);
+      for (const [o, k] of metaStrings(peer.meta)) o[k] = swap(o[k] || '', re, typed);
+      peer.notes = swapHTML(peer.notes, re, typed);
+    }
   }
-  if (notes.innerHTML !== notesHTML) await window.neo.writeAux(book.id, 'notes', notes.innerHTML);
+  if (notes !== notesHTML) await window.neo.writeAux(book.id, 'notes', notes);
+  const before = new Map(snap.peers.map((p) => [p.id, p]));
+  for (const peer of peers) {
+    const old = before.get(peer.id);
+    for (const chId of Object.keys(peer.chapters)) {
+      if (peer.chapters[chId] !== old.chapters[chId]) await window.neo.writeChapter(peer.id, chId, peer.chapters[chId]);
+    }
+    if (peer.notes !== old.notes) await window.neo.writeAux(peer.id, 'notes', peer.notes);
+    peer.meta.characters = JSON.parse(JSON.stringify(castList()));
+    peer.meta.castRemoved = [...(book.castRemoved || [])];
+    await writeBookMeta(peer.id, peer.meta);
+  }
   await saveMeta();
   if (titlesTouched) renderChapters();
   renderNav();
   scheduleCast();
   toast(n ? t('{n} replaced across the whole book — {key} to undo', { n, key: KZ }) : t('0 replaced'));
+}
+
+/* --- A bound book's parts share one cast ------------------------- */
+/*  Each part keeps a copy in its own book.json (a folder stays whole  */
+/*  if it's ever unbound); NEO keeps the copies level. Cards deleted   */
+/*  in one part are remembered, so another part can't bring them back. */
+
+let castPeers = [];
+let castShareTimer = null;
+
+async function findCastPeers() {
+  const shelf = book && shelfOf(book.id);
+  if (!isBound(shelf)) return [];
+  const out = [];
+  for (const id of shelf.bookIds) {
+    if (id === book.id) continue;
+    const m = await shelfMeta(id);
+    if (!m || (isPageMeta(m) && !PAGE_WRITTEN.includes(m.kind))) continue;
+    out.push(id);
+  }
+  return out;
+}
+
+async function syncCastOnOpen() {
+  const opened = book;
+  const peers = await findCastPeers();
+  if (book !== opened) return;
+  castPeers = peers;
+  if (!peers.length) return;
+  const own = castList();
+  const removed = new Set(book.castRemoved || []);
+  const ids = new Set(own.map((c) => c.id));
+  const names = new Set(own.map((c) => castFold(charName(c))));
+  let changed = false;
+  for (const id of peers) {
+    const m = await window.neo.readBookMeta(id);
+    if (!m || book !== opened) continue;
+    (m.castRemoved || []).forEach((x) => removed.add(x));
+    for (const c of m.characters || []) {
+      if (ids.has(c.id) || names.has(castFold(charName(c)))) continue;
+      ids.add(c.id);
+      names.add(castFold(charName(c)));
+      own.push(JSON.parse(JSON.stringify(c)));
+      changed = true;
+    }
+  }
+  if (book !== opened) return;
+  const kept = own.filter((c) => !removed.has(c.id));
+  if (kept.length !== own.length) changed = true;
+  book.characters = kept;
+  if (removed.size) book.castRemoved = [...removed];
+  if (changed) scheduleMetaSave();
+  await shareCast();
+  scheduleCast();
+  if (currentTab === 'characters') renderCharacters();
+}
+
+function scheduleCastShare() {
+  clearTimeout(castShareTimer);
+  castShareTimer = setTimeout(shareCast, 1000);
+}
+
+async function shareCast() {
+  clearTimeout(castShareTimer);
+  castShareTimer = null;
+  if (!book || !castPeers.length) return;
+  // taken now: the book may close while the parts are being written
+  const cast = JSON.stringify(castList());
+  const removed = JSON.stringify(book.castRemoved || []);
+  for (const id of [...castPeers]) {
+    const m = await window.neo.readBookMeta(id);
+    if (!m) continue;
+    if (JSON.stringify(m.characters || []) === cast && JSON.stringify(m.castRemoved || []) === removed) continue;
+    m.characters = JSON.parse(cast);
+    m.castRemoved = JSON.parse(removed);
+    await writeBookMeta(id, m);
+  }
+}
+
+/* --- Bring characters in from another book (copies) -------------- */
+
+async function importCharacters() {
+  const all = (await window.neo.listBooks())
+    .filter((b) => b.id !== book.id && !castPeers.includes(b.id) && (!b.kind || PAGE_WRITTEN.includes(b.kind)));
+  const sources = [];
+  for (const b of all) {
+    const m = await window.neo.readBookMeta(b.id);
+    const cast = (m && m.characters) || [];
+    if (cast.length) sources.push({ title: m.title || b.title, cast });
+  }
+  if (!sources.length) { toast(t('No other book has characters yet.')); return; }
+  const have = new Set(castList().map((c) => castFold(charName(c))));
+  const bd = document.createElement('div');
+  bd.className = 'modal-backdrop';
+  bd.innerHTML = `
+    <div class="modal cast-import" style="width:440px">
+      <h2 style="font-size:16px"></h2>
+      <p class="ci-hint"></p>
+      <div class="ci-list"></div>
+      <div style="text-align:right;margin-top:14px">
+        <button class="m-cancel btn-quiet" style="margin-right:10px"></button>
+        <button class="m-ok btn-gold"></button>
+      </div>
+    </div>`;
+  bd.querySelector('h2').textContent = t('Import characters');
+  bd.querySelector('.ci-hint').textContent = t('They arrive as copies: changing them here leaves the other book as it is.');
+  bd.querySelector('.m-cancel').textContent = t('Cancel');
+  bd.querySelector('.m-ok').textContent = t('Import');
+  const list = bd.querySelector('.ci-list');
+  const picks = [];
+  for (const src of sources) {
+    const h = document.createElement('div');
+    h.className = 'ci-book';
+    h.textContent = src.title;
+    list.appendChild(h);
+    for (const c of src.cast) {
+      const row = document.createElement('label');
+      row.className = 'ci-row';
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      const already = have.has(castFold(charName(c)));
+      box.disabled = already;
+      const name = document.createElement('span');
+      name.textContent = charName(c) + (c.role ? ' · ' + c.role : '');
+      row.append(box, name);
+      if (already) {
+        const note = document.createElement('em');
+        note.textContent = t('already here');
+        row.appendChild(note);
+      }
+      list.appendChild(row);
+      picks.push({ box, c });
+    }
+  }
+  document.body.appendChild(bd);
+  const ok = bd.querySelector('.m-ok');
+  const close = () => bd.remove();
+  bd.querySelector('.m-cancel').onclick = close;
+  bd.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
+  const first = list.querySelector('input:not([disabled])');
+  (first || ok).focus();
+  ok.onclick = () => {
+    const chosen = picks.filter((p) => p.box.checked);
+    close();
+    if (!chosen.length) return;
+    for (const { c } of chosen) castList().push({ ...JSON.parse(JSON.stringify(c)), id: castId() });
+    castChanged();
+    renderCharacters();
+    toast(t('Characters imported: {n}', { n: fmtNum(chosen.length) }));
+  };
 }
 
 /* --- @ while writing: pick a character, and which of their names --- */
@@ -6040,6 +6332,7 @@ function flushAllSaves() {
   }
   flushAux();
   flushStickiesSave();
+  if (castShareTimer) shareCast();
   if (moved || metaSig(book) !== savedMetaSig) saveMeta();
 }
 
@@ -6396,6 +6689,11 @@ async function structuralUndo() {
   if (snap.characters) book.characters = snap.characters;
   // a rename across the book also rewrote the Notes tab
   if (typeof snap.auxNotes === 'string') await window.neo.writeAux(book.id, 'notes', snap.auxNotes);
+  for (const peer of snap.peers || []) {
+    for (const [chId, html] of Object.entries(peer.chapters)) await window.neo.writeChapter(peer.id, chId, html);
+    await window.neo.writeAux(peer.id, 'notes', peer.notes);
+    await writeBookMeta(peer.id, peer.meta);
+  }
   // resurrect any chapter files the action may have deleted
   for (const chId of book.chapterOrder) {
     await persistChapter(chId, chapterHTML[chId] || '<p><br></p>');
