@@ -5763,9 +5763,12 @@ function renderCharacters(focusId) {
   const addW = document.createElement('button');
   addW.className = 'cast-add';
   addW.textContent = '+ ' + t('New element');
-  addW.onclick = async () => {
-    const type = await optionModal(t('New element'), null,
-      Object.keys(WORLD_TYPES).map((k) => ({ label: worldTypeName(k), value: k })));
+  // the same small menu as a chapter's right-click, hung from the button
+  addW.onclick = async (e) => {
+    const r = addW.getBoundingClientRect();
+    const type = await popMenu(e.detail ? e.clientX : 0, e.detail ? r.bottom : 0,
+      Object.keys(WORLD_TYPES).map((k) => ({ label: worldTypeName(k), value: k })),
+      { title: t('New element'), from: addW });
     if (type) addWorld(type);
   };
   const impW = document.createElement('button');
