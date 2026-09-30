@@ -1472,10 +1472,9 @@ function buildMenu() {
       ]
     },
     {
-      // On a Mac the zero-width space keeps macOS from recognizing this as
-      // "the Edit menu" and slipping Writing Tools and AutoFill into it.
-      // No generative-AI tools in NEO — not now, not later. It reads "Edit".
-      label: t('Edit') + (isMac ? '\u200B' : ''),
+      // macOS slips Writing Tools and AutoFill into this menu on its own;
+      // hideSystemEditItems() hides them again (see below)
+      label: t('Edit'),
       submenu: [
         // standard items carry their own labels, so they follow NEO's language
         { role: 'undo', label: t('Undo') }, { role: 'redo', label: t('Redo') },
@@ -1670,7 +1669,156 @@ function buildMenu() {
       ]
     }
   ];
-  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  const menu = Menu.buildFromTemplate(template);
+  editMenuState.edit = null; // the old menu bar is going: forget its Edit menu first
+  Menu.setApplicationMenu(menu);
+  if (isMac) {
+    // macOS adds its items as the menu opens: NEO hears each addition
+    // (watchEditMenu) and looks again whenever the menu opens
+    const edit = menu.items.find((it) => it.submenu && it.label === t('Edit'));
+    if (edit) {
+      // NEO's own Edit items in order; null stands for a separator
+      editMenuState.index = menu.items.indexOf(edit);
+      editMenuState.ours = edit.submenu.items.map((it) => (it.type === 'separator' ? null : menuTitle(it.label)));
+      watchEditMenu();
+      setImmediate(hideSystemEditItems);
+      edit.submenu.on('menu-will-show', hideSystemEditItems);
+    }
+  }
+}
+
+// No generative-AI tools in NEO — not now, not later.
+//
+// macOS inserts "Writing Tools" (Apple Intelligence) and "AutoFill" into
+// any app's Edit menu while the menu is opening, and Electron has no
+// switch for either. Deleting them doesn't last (macOS puts them back);
+// hiding them does. NEO reaches the real menu through the Objective-C
+// runtime (koffi, a small FFI library) and listens for the notice AppKit
+// sends whenever an item is added to or changed in a menu. The moment
+// anything lands in the Edit menu, NEO walks the menu alongside the one it
+// built and hides every item that isn't its own, in any language. Should
+// anything here fail, the menu is left as macOS made it: this never stops
+// NEO from working.
+let objc = null;
+function objcRuntime() {
+  if (objc) return objc;
+  const koffi = require('koffi');
+  const lib = koffi.load('/usr/lib/libobjc.A.dylib');
+  const NoteIMP = koffi.proto('void NoteIMP(void *self, void *cmd, void *note)');
+  objc = {
+    koffi,
+    NoteIMP,
+    cls: lib.func('void *objc_getClass(const char *name)'),
+    sel: lib.func('void *sel_registerName(const char *name)'),
+    allocClass: lib.func('void *objc_allocateClassPair(void *superclass, const char *name, size_t extra)'),
+    registerClass: lib.func('void objc_registerClassPair(void *cls)'),
+    addMethod: lib.func('bool class_addMethod(void *cls, void *name, NoteIMP *imp, const char *types)'),
+    // objc_msgSend, typed once per shape it is called with
+    obj: lib.func('objc_msgSend', 'void *', ['void *', 'void *']),
+    objAt: lib.func('objc_msgSend', 'void *', ['void *', 'void *', 'long']),
+    objStr: lib.func('objc_msgSend', 'void *', ['void *', 'void *', 'const char *']),
+    count: lib.func('objc_msgSend', 'long', ['void *', 'void *']),
+    flag: lib.func('objc_msgSend', 'bool', ['void *', 'void *']),
+    str: lib.func('objc_msgSend', 'const char *', ['void *', 'void *']),
+    setFlag: lib.func('objc_msgSend', 'void', ['void *', 'void *', 'bool']),
+    selName: lib.func('const char *sel_getName(void *sel)'),
+    actionOf: lib.func('objc_msgSend', 'void *', ['void *', 'void *']),
+    observe: lib.func('objc_msgSend', 'void', ['void *', 'void *', 'void *', 'void *', 'void *', 'void *'])
+  };
+  return objc;
+}
+const editMenuState = { index: -1, ours: [], edit: null, watching: false, hiding: false };
+// macOS drops the & that Electron reads as a keyboard mnemonic ("Find & Replace"
+// arrives as "Find  Replace"), so titles are compared without it
+const menuTitle = (s) => String(s || '').replace(/&/g, '').replace(/\s+/g, ' ').trim();
+// the actions Electron gives the items it builds: never macOS's own
+const ELECTRON_ACTIONS = new Set(['itemSelected:', 'undo:', 'redo:', 'cut:', 'copy:', 'paste:', 'pasteAndMatchStyle:', 'selectAll:']);
+const addr = (p) => (p ? objc.koffi.address(p) : 0n);
+// the Edit menu as AppKit holds it right now
+function nativeEditMenu() {
+  const o = objcRuntime();
+  const S = (name) => o.sel(name);
+  const app = o.obj(o.cls('NSApplication'), S('sharedApplication'));
+  const bar = app && o.obj(app, S('mainMenu'));
+  const i = editMenuState.index;
+  if (!bar || i < 0 || i >= o.count(bar, S('numberOfItems'))) return null;
+  const item = o.objAt(bar, S('itemAtIndex:'), i);
+  return item ? o.obj(item, S('submenu')) : null;
+}
+// hide what isn't NEO's; returns the menu as seen, for the log
+function hideForeignItems(edit) {
+  const o = objc;
+  const S = (name) => o.sel(name);
+  const ours = editMenuState.ours;
+  const n = o.count(edit, S('numberOfItems'));
+  const seen = [];
+  let j = 0; // the next of NEO's own items to find, in order
+  for (let i = 0; i < n; i++) {
+    const item = o.objAt(edit, S('itemAtIndex:'), i);
+    if (!item) continue;
+    const sep = o.flag(item, S('isSeparatorItem'));
+    const titleObj = sep ? null : o.obj(item, S('title'));
+    const title = titleObj ? o.str(titleObj, S('UTF8String')) : '';
+    const mine = j < ours.length && (sep ? ours[j] === null : ours[j] === menuTitle(title));
+    if (mine) j++;
+    else {
+      // a safety net: whatever happens to titles, an item Electron made
+      // for NEO is never the one hidden
+      const act = sep ? null : o.actionOf(item, S('action'));
+      const electrons = act && ELECTRON_ACTIONS.has(o.selName(act));
+      if (!electrons && !o.flag(item, S('isHidden'))) o.setFlag(item, S('setHidden:'), true);
+    }
+    seen.push((mine ? '' : '[not NEO\'s] ') + (sep ? '—' : title));
+  }
+  return seen;
+}
+function hideSystemEditItems() {
+  if (process.platform !== 'darwin' || editMenuState.hiding) return;
+  editMenuState.hiding = true;
+  try {
+    const edit = editMenuState.edit || (editMenuState.edit = nativeEditMenu());
+    if (edit) hideForeignItems(edit);
+  } catch (err) {
+    logError('edit menu', err);
+  } finally {
+    editMenuState.hiding = false;
+  }
+}
+// a tiny Objective-C class whose one method AppKit calls whenever a menu
+// gains or changes an item; it hides foreign items in the Edit menu
+function watchEditMenu() {
+  if (process.platform !== 'darwin' || editMenuState.watching) return;
+  editMenuState.watching = true;
+  try {
+    const o = objcRuntime();
+    const S = (name) => o.sel(name);
+    // AppKit calls this for every menu in the app as items come and go
+    // (mostly while a menu opens): one lookup, and a pass over the Edit
+    // menu only when it's the Edit menu that changed
+    const imp = o.koffi.register((_self, _cmd, note) => {
+      try {
+        if (editMenuState.hiding || !note) return;
+        const menu = o.obj(note, S('object'));
+        const edit = editMenuState.edit || (editMenuState.edit = nativeEditMenu());
+        if (menu && edit && addr(menu) === addr(edit)) hideSystemEditItems();
+      } catch (err) {
+        logError('edit menu', err);
+      }
+    }, o.koffi.pointer(o.NoteIMP));
+    let cls = o.allocClass(o.cls('NSObject'), 'NEOEditMenuWatcher', 0);
+    if (cls) {
+      o.addMethod(cls, S('neoMenuChanged:'), imp, 'v@:@');
+      o.registerClass(cls);
+    } else cls = o.cls('NEOEditMenuWatcher');
+    const watcher = o.obj(o.obj(cls, S('alloc')), S('init'));
+    const center = o.obj(o.cls('NSNotificationCenter'), S('defaultCenter'));
+    for (const name of ['NSMenuDidAddItemNotification', 'NSMenuDidChangeItemNotification']) {
+      const nsName = o.objStr(o.cls('NSString'), S('stringWithUTF8String:'), name);
+      o.observe(center, S('addObserver:selector:name:object:'), watcher, S('neoMenuChanged:'), nsName, null);
+    }
+  } catch (err) {
+    logError('edit menu', err);
+  }
 }
 
 // Manual update check (Help → Check for Update…): a direct GitHub Releases
@@ -1826,17 +1974,22 @@ if (!app.requestSingleInstanceLock()) {
   });
 }
 
-// The background look: a few seconds after launch, then every four hours
-// for a writer who leaves NEO open for days. Nothing pops up; any failure is
-// logged and swallowed, so an offline machine or an unsigned build never
-// notices.
-const UPDATE_EVERY = 4 * 60 * 60 * 1000;
+// The background look: a few seconds after launch, every hour after that
+// for a writer who leaves NEO open for days, and whenever the computer
+// wakes (a laptop lid is how most NEO sessions end and begin). Nothing pops
+// up; any failure is logged and swallowed, so an offline machine or an
+// unsigned build never notices.
+const UPDATE_EVERY = 60 * 60 * 1000;
 function checkForUpdates() {
   if (!app.isPackaged) return;
   const look = () => { lookForUpdate().catch(() => { /* logged in lookForUpdate */ }); };
   setTimeout(look, 8000);
   const timer = setInterval(look, UPDATE_EVERY);
   if (timer.unref) timer.unref();
+  try {
+    // after a wake the network needs a moment
+    require('electron').powerMonitor.on('resume', () => setTimeout(look, 15000));
+  } catch (err) { logError('updater', err); }
 }
 
 app.whenReady().then(() => {
