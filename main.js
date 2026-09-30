@@ -1704,6 +1704,13 @@ function buildMenu() {
             { label: t('Light'), type: 'radio', checked: viewState.pageTheme === 'light', click: () => sendToWindow({ type: 'pageTheme', value: 'light' }) }
           ]
         },
+        // the Story Bible's tab: shown to planners unless chosen here
+        {
+          label: t('Story Bible'),
+          type: 'checkbox',
+          checked: (() => { const l = readJSON(LIBRARY_FILE, {}); return typeof l.bibleShown === 'boolean' ? l.bibleShown : writingStyle === 'plotter'; })(),
+          click: (item) => sendToWindow({ type: 'bibleShown', checked: item.checked })
+        },
         {
           label: t('Brighter Interface'),
           type: 'checkbox',

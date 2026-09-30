@@ -5055,7 +5055,6 @@ function renderOutline(focusTarget) {
   book.chapterNotes = book.chapterNotes || {};
   const wrap = $('#outline-list');
   wrap.innerHTML = '';
-  wrap.appendChild(outlineSynopsis());
 
   // the story's lines, with each part standing over its chapters (the pages
   // a book carries have nothing to outline)
@@ -5069,6 +5068,8 @@ function renderOutline(focusTarget) {
       wrap.appendChild(outlineLine('section', chId, sec.id, j, secLetter(j), sec.text));
     });
   });
+
+  bibleOutline(wrap); // bible.js: the synopsis on top, who is in each chapter
 
   const hint = document.createElement('div');
   hint.className = 'ol-hint';
@@ -8903,12 +8904,14 @@ document.addEventListener('mouseup', () => {
 }, true);
 
 // the tabs: Enter or Space opens one, ← → move along the row
-$$('.tab').forEach((tab, i, all) => {
+$$('.tab').forEach((tab) => {
   tab.addEventListener('keydown', (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tab.click(); }
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
       e.preventDefault();
+      const all = $$('.tab').filter((x) => !x.hidden); // a hidden tab is skipped
+      const i = all.indexOf(tab);
       all[(i + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length].focus();
     }
   });

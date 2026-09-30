@@ -250,7 +250,8 @@ function castPeekCard(c) {
   const open = document.createElement('button');
   open.textContent = t('Open in the bible');
   open.onclick = () => openInBible(c.id);
-  acts.append(next, open);
+  acts.append(next);
+  if (bibleShown()) acts.append(open); // the full card lives in a tab a pantser may not show
   box.appendChild(acts);
   return box;
 }
@@ -1320,6 +1321,7 @@ function mergeShared(own, theirs, removed, key) {
 }
 
 async function syncCastOnOpen() {
+  applyBibleVisibility();
   const opened = book;
   const peers = await findCastPeers();
   if (book !== opened) return;
@@ -1474,6 +1476,63 @@ async function importCharacters() {
     renderCharacters();
     toast(t('Imported: {n}', { n: fmtNum(chosen.length) }));
   };
+}
+
+/* --- The Outline: the synopsis on top, who is in each chapter ------ */
+
+function bibleOutline(wrap) {
+  wrap.insertBefore(outlineSynopsis(), wrap.firstChild);
+  if (!bibleShown()) return;
+  const cast = castList();
+  if (!cast.length) return;
+  wrap.querySelectorAll('.ol-line.ol-chapter').forEach((line) => {
+    const stats = castStats(chapterPlain(line.dataset.chId));
+    const present = cast.filter((c) => stats.get(c.id)).sort((a, b) => stats.get(b.id).n - stats.get(a.id).n);
+    if (!present.length) return;
+    const row = document.createElement('div');
+    row.className = 'ol-cast';
+    for (const c of present) {
+      const b = document.createElement('button');
+      b.className = 'ol-who';
+      b.textContent = charName(c);
+      b.title = t('Mentions: {n}', { n: fmtNum(stats.get(c.id).n) }) + '\n' + t('Open in the bible');
+      b.onclick = () => openInBible(c.id);
+      row.appendChild(b);
+    }
+    line.after(row);
+  });
+}
+
+/* --- Who sees the bible ------------------------------------------ */
+/*  A planner does: NEO asked at first run, "Blank Page" or "Outline  */
+/*  First". View → Story Bible shows or hides it for anyone, and that */
+/*  choice then stands whatever the writing style.                    */
+
+function bibleShown() {
+  if (!library) return false;
+  if (typeof library.bibleShown === 'boolean') return library.bibleShown;
+  return library.writingStyle === 'plotter';
+}
+
+function applyBibleVisibility() {
+  const tab = document.querySelector('.tab[data-tab="characters"]');
+  if (!tab) return;
+  tab.hidden = !bibleShown();
+  if (tab.hidden && currentTab === 'characters') switchTab('manuscript');
+  if (currentTab === 'outline' && book) renderOutline();
+}
+
+if (window.neo && window.neo.onMenu) {
+  window.neo.onMenu(async (msg) => {
+    if (msg.type === 'bibleShown') {
+      library.bibleShown = !!msg.checked;
+      await writeLibrary(library);
+      applyBibleVisibility();
+      toast(msg.checked ? t('The Story Bible is back in the tabs.') : t('The Story Bible is hidden. View → Story Bible brings it back.'));
+    }
+    // app.js has just saved the new style; the tab follows unless chosen by hand
+    if (msg.type === 'writingStyle') setTimeout(applyBibleVisibility, 0);
+  });
 }
 
 /* --- @ while writing: pick a character, and which of their names --- */
