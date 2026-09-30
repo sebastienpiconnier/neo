@@ -34,7 +34,6 @@
   "Cut": "Cortar",
   "Daily goal": "Objetivo diário",
   "Delete book": "Eliminar livro",
-  "Delete chapter": "Eliminar capítulo",
   "Delete forever": "Eliminar para sempre",
   "Delete section": "Eliminar secção",
   "Delete shelf": "Eliminar estante",
@@ -79,7 +78,6 @@
   "New tab name": "Novo nome do separador",
   "No .docx, .txt, or .md files in that drop": "Nenhum ficheiro .docx, .txt ou .md no que foi solto",
   "No API key for {provider} — add one under File → Cover Art…": "Nenhuma chave de API para {provider}: adicione uma em Ficheiro → Capa…",
-  "Nothing to save — it just goes.": "Nada para guardar: ele simplesmente desaparece.",
   "Number chapters straight through": "Numerar os capítulos seguidos",
   "of book goal": "do objetivo do livro",
   "Opens a pre-filled compose window in your browser. NEO shows you the PDF to drag into it.": "Abre uma janela de e-mail já preenchida no seu navegador. O NEO mostra-lhe o PDF para o arrastar.",
@@ -132,7 +130,6 @@
   "You have {version}.": "Tem a versão {version}.",
   "you@example.com": "o.seu@exemplo.pt",
   "Your books live in:\n{dir}\n\nChoose another folder and NEO restarts there. Existing books stay where they are — move the files yourself if you want them along.": "Os seus livros estão em:\n{dir}\n\nEscolha outra pasta e o NEO reinicia nela. Os livros existentes ficam onde estão: mova os ficheiros se os quiser levar.",
-  "You’re on the latest version ({version})": "Tem a versão mais recente ({version})",
   "“{title}” removed from the shelves — its files are still in your NEO Library": "“{title}” foi retirado das estantes: os ficheiros continuam na sua biblioteca do NEO",
   "Insert a section break": "Inserir uma quebra de secção",
   "Its titles become one book, with a cover, front and back pages, and one table of contents.": "Os seus títulos passam a ser um só livro, com capa, páginas preliminares e finais e um só índice.",
@@ -172,5 +169,10 @@
   "Add one here, or type @ and a name while you write.": "Adicione uma aqui, ou escreva @ e um nome enquanto escreve.",
   "Type @ and a few letters, then pick the name. Esc keeps the @.": "Escreva @ e algumas letras, depois escolha o nome. Esc mantém o @.",
   "Click to go to the next mention": "Clique para ir para a menção seguinte",
-  "A line to remember them by": "Uma linha para a recordar"
+  "A line to remember them by": "Uma linha para a recordar",
+  "Vim keys on — Esc to move, i to write": "Teclas do Vim ligadas — Esc para se deslocar, i para escrever",
+  "Stop writing and move around the page": "Parar de escrever e deslocar-se pela página",
+  "Down or up half a screen": "Meio ecrã para baixo ou para cima",
+  "Write in a new paragraph below or above": "Escrever num novo parágrafo abaixo ou acima",
+  "Move to stretch it, then y to copy or d to cut.": "Desloque-se para a alargar; depois y para copiar ou d para cortar."
 }
