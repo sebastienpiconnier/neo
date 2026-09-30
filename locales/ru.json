@@ -631,8 +631,6 @@
   "Note": "Заметка",
   "Separated by commas": "Через запятую",
   "A line to remember them by": "Строчка, чтобы не забыть",
-  "Delete this character?": "Удалить этого персонажа?",
-  "{name} leaves the list. The text of the book is not touched.": "{name} исчезнет из списка. Текст книги не изменится.",
   "“{old}” → “{new}”: {n} times, in {c} chapters": "«{old}» → «{new}»: {n} раз, в главах: {c}",
   "Rename in the text too?": "Переименовать и в тексте?",
   "Replace everywhere": "Заменить везде",
@@ -742,11 +740,10 @@
   "Unfold": "Развернуть",
   "Name": "Название",
   "Type": "Тип",
-  "Delete this element?": "Удалить этот элемент?",
-  "{name} leaves the bible.": "{name} исчезнет из библии.",
   "Drag to reorder": "Перетащите, чтобы изменить порядок",
   "No other book has a bible yet.": "Ни в одной другой книге пока нет библии.",
   "Import from another book": "Импорт из другой книги",
   "Character": "Персонаж",
-  "Imported: {n}": "Импортировано: {n}"
+  "Imported: {n}": "Импортировано: {n}",
+  "{name} left the bible, {key} to undo": "{name} удалён из библии, отменить: {key}"
 }

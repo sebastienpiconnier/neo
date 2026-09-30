@@ -572,8 +572,6 @@
   "Separated by commas": "Separados por vírgulas",
   "A line to remember them by": "Uma linha para lembrar dele",
   "Delete": "Excluir",
-  "Delete this character?": "Excluir este personagem?",
-  "{name} leaves the list. The text of the book is not touched.": "{name} sai da lista. O texto do livro não é alterado.",
   "“{old}” → “{new}”: {n} times, in {c} chapters": "“{old}” → “{new}”: {n} vezes, em {c} capítulos",
   "Rename in the text too?": "Renomear também no texto?",
   "Replace everywhere": "Substituir em todo o livro",
@@ -691,11 +689,10 @@
   "Unfold": "Expandir",
   "Name": "Nome",
   "Type": "Tipo",
-  "Delete this element?": "Excluir este elemento?",
-  "{name} leaves the bible.": "{name} sai da bíblia.",
   "Drag to reorder": "Arraste para reordenar",
   "No other book has a bible yet.": "Nenhum outro livro tem bíblia ainda.",
   "Import from another book": "Importar de outro livro",
   "Character": "Personagem",
-  "Imported: {n}": "Importados: {n}"
+  "Imported: {n}": "Importados: {n}",
+  "{name} left the bible, {key} to undo": "{name} saiu da bíblia, {key} para desfazer"
 }

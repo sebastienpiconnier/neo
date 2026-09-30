@@ -572,8 +572,6 @@
   "Separated by commas": "Durch Kommas getrennt",
   "A line to remember them by": "Eine Zeile zur Erinnerung",
   "Delete": "Löschen",
-  "Delete this character?": "Diese Figur löschen?",
-  "{name} leaves the list. The text of the book is not touched.": "{name} verschwindet aus der Liste. Der Text des Buchs bleibt unberührt.",
   "“{old}” → “{new}”: {n} times, in {c} chapters": "„{old}“ → „{new}“: {n}-mal, in {c} Kapiteln",
   "Rename in the text too?": "Auch im Text umbenennen?",
   "Replace everywhere": "Überall ersetzen",
@@ -691,11 +689,10 @@
   "Unfold": "Aufklappen",
   "Name": "Name",
   "Type": "Art",
-  "Delete this element?": "Dieses Element löschen?",
-  "{name} leaves the bible.": "{name} verschwindet aus der Bibel.",
   "Drag to reorder": "Zum Umordnen ziehen",
   "No other book has a bible yet.": "Noch kein anderes Buch hat eine Bibel.",
   "Import from another book": "Aus einem anderen Buch importieren",
   "Character": "Figur",
-  "Imported: {n}": "Importiert: {n}"
+  "Imported: {n}": "Importiert: {n}",
+  "{name} left the bible, {key} to undo": "{name} ist aus der Bibel verschwunden, {key} macht es rückgängig"
 }

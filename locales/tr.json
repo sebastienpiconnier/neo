@@ -558,8 +558,6 @@
   "Note": "Not",
   "Separated by commas": "Virgülle ayırın",
   "A line to remember them by": "Hatırlamak için bir satır",
-  "Delete this character?": "Bu karakter silinsin mi?",
-  "{name} leaves the list. The text of the book is not touched.": "{name} listeden çıkar. Kitabın metnine dokunulmaz.",
   "“{old}” → “{new}”: {n} times, in {c} chapters": "“{old}” → “{new}”: {n} kez, {c} bölümde",
   "Rename in the text too?": "Metinde de yeniden adlandırılsın mı?",
   "Replace everywhere": "Her yerde değiştir",
@@ -642,11 +640,10 @@
   "Unfold": "Genişlet",
   "Name": "Ad",
   "Type": "Tür",
-  "Delete this element?": "Bu öğe silinsin mi?",
-  "{name} leaves the bible.": "{name} incilden çıkar.",
   "Drag to reorder": "Sıralamak için sürükleyin",
   "No other book has a bible yet.": "Başka hiçbir kitabın henüz bir incili yok.",
   "Import from another book": "Başka bir kitaptan içe aktar",
   "Character": "Karakter",
-  "Imported: {n}": "İçe aktarılan: {n}"
+  "Imported: {n}": "İçe aktarılan: {n}",
+  "{name} left the bible, {key} to undo": "{name} incilden çıktı, geri almak için {key}"
 }

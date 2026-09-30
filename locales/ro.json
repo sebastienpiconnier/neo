@@ -610,8 +610,6 @@
   "Note": "Notă",
   "Separated by commas": "Separate prin virgule",
   "A line to remember them by": "Un rând ca să ți-l amintești",
-  "Delete this character?": "Ștergi acest personaj?",
-  "{name} leaves the list. The text of the book is not touched.": "{name} dispare din listă. Textul cărții nu este atins.",
   "“{old}” → “{new}”: {n} times, in {c} chapters": "„{old}” → „{new}”: de {n} ori, în {c} capitole",
   "Rename in the text too?": "Redenumești și în text?",
   "Replace everywhere": "Înlocuiește peste tot",
@@ -721,11 +719,10 @@
   "Unfold": "Desfă",
   "Name": "Nume",
   "Type": "Tip",
-  "Delete this element?": "Ștergi acest element?",
-  "{name} leaves the bible.": "{name} iese din biblie.",
   "Drag to reorder": "Trage pentru a reordona",
   "No other book has a bible yet.": "Nicio altă carte nu are încă o biblie.",
   "Import from another book": "Importă din altă carte",
   "Character": "Personaj",
-  "Imported: {n}": "Importate: {n}"
+  "Imported: {n}": "Importate: {n}",
+  "{name} left the bible, {key} to undo": "{name} a ieșit din biblie, {key} pentru a anula"
 }

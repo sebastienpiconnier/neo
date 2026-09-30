@@ -569,8 +569,6 @@
   "Separated by commas": "Gescheiden door komma’s",
   "A line to remember them by": "Eén regel om het te onthouden",
   "Delete": "Verwijderen",
-  "Delete this character?": "Dit personage verwijderen?",
-  "{name} leaves the list. The text of the book is not touched.": "{name} verdwijnt uit de lijst. De tekst van het boek blijft onaangeroerd.",
   "“{old}” → “{new}”: {n} times, in {c} chapters": "‘{old}’ → ‘{new}’: {n} keer, in {c} hoofdstukken",
   "Rename in the text too?": "Ook in de tekst hernoemen?",
   "Replace everywhere": "Overal vervangen",
@@ -688,11 +686,10 @@
   "Unfold": "Uitklappen",
   "Name": "Naam",
   "Type": "Soort",
-  "Delete this element?": "Dit element verwijderen?",
-  "{name} leaves the bible.": "{name} verdwijnt uit de bijbel.",
   "Drag to reorder": "Sleep om te herschikken",
   "No other book has a bible yet.": "Nog geen ander boek heeft een bijbel.",
   "Import from another book": "Importeren uit een ander boek",
   "Character": "Personage",
-  "Imported: {n}": "Geïmporteerd: {n}"
+  "Imported: {n}": "Geïmporteerd: {n}",
+  "{name} left the bible, {key} to undo": "{name} is uit de bijbel verdwenen, {key} om ongedaan te maken"
 }

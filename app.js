@@ -5901,15 +5901,13 @@ function addWorld(type) {
   return w;
 }
 
-async function deleteWorld(w) {
-  const ok = await optionModal(t('Delete this element?'),
-    t('{name} leaves the bible.', { name: escapeHTML(w.name || worldTypeName(w.type)) }),
-    [{ label: t('Delete'), value: 'del', danger: true }]);
-  if (ok !== 'del') return;
+function deleteWorld(w) {
+  snapshotStructure(t('Delete'));
   book.world = worldList().filter((x) => x.id !== w.id);
   book.worldRemoved = [...new Set([...(book.worldRemoved || []), w.id])];
   castChanged();
   renderCharacters();
+  toast(t('{name} left the bible, {key} to undo', { name: w.name || worldTypeName(w.type), key: KZ }));
 }
 
 // cards reorder by their grip: drop above or below another card of the same list
@@ -6068,16 +6066,15 @@ function addCharacter(fields) {
   return c;
 }
 
-async function deleteCharacter(c) {
-  const ok = await optionModal(t('Delete this character?'),
-    t('{name} leaves the list. The text of the book is not touched.', { name: escapeHTML(charName(c)) }),
-    [{ label: t('Delete'), value: 'del', danger: true }]);
-  if (ok !== 'del') return;
+// no question asked, the way a chapter goes: gone at once, back with ⌘Z
+function deleteCharacter(c) {
+  snapshotStructure(t('Delete'));
   book.characters = castList().filter((x) => x.id !== c.id);
   // remembered, so a bound part that still has the card doesn't bring it back
   book.castRemoved = [...new Set([...(book.castRemoved || []), c.id])];
   castChanged();
   renderCharacters();
+  toast(t('{name} left the bible, {key} to undo', { name: charName(c), key: KZ }));
 }
 
 // A changed name can carry the book with it: the writer chooses
@@ -7018,7 +7015,9 @@ function snapshotStructure(label, opts) {
     stickies: JSON.parse(JSON.stringify(stickies)),
     characters: JSON.parse(JSON.stringify(book.characters || [])),
     world: JSON.parse(JSON.stringify(book.world || [])),
-    story: JSON.parse(JSON.stringify(book.story || {}))
+    story: JSON.parse(JSON.stringify(book.story || {})),
+    castRemoved: [...(book.castRemoved || [])],
+    worldRemoved: [...(book.worldRemoved || [])]
   });
   if (undoStack.length > 10) undoStack.shift();
 }
@@ -7037,6 +7036,9 @@ async function structuralUndo() {
   if (snap.characters) book.characters = snap.characters;
   if (snap.world) book.world = snap.world;
   if (snap.story) book.story = snap.story;
+  if (snap.castRemoved) book.castRemoved = snap.castRemoved;
+  if (snap.worldRemoved) book.worldRemoved = snap.worldRemoved;
+  if (castPeers.length && !snap.peers) scheduleCastShare(); // a deleted card comes back in every part
   // a rename across the book also rewrote the Notes tab
   if (typeof snap.auxNotes === 'string') await window.neo.writeAux(book.id, 'notes', snap.auxNotes);
   for (const peer of snap.peers || []) {
