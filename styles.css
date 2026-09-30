@@ -1642,3 +1642,34 @@ body.night .drag-grip { color: #5a5650; }
 @media (forced-colors: active) {
   .bible-chip.on { forced-color-adjust: none; background: Highlight; color: HighlightText; }
 }
+
+/* --- Bible pictures --- */
+.bible-img {
+  padding: 0; border: 1px solid #e3ddcf; border-radius: 4px; background: #f1ede4;
+  overflow: hidden; cursor: zoom-in; flex-shrink: 0;
+}
+.bible-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.bible-img.missing { cursor: default; }
+.bible-img:hover, .bible-img:focus-visible { border-color: var(--accent); }
+.cast-card > .bible-img { float: right; width: 76px; height: 96px; margin: 2px 0 8px 16px; }
+.cast-card > .drag-grip { left: 5px; right: auto; top: 12px; }
+.wc-head .bible-img { width: 34px; height: 34px; border-radius: 50%; }
+.cast-card.img-over, .world-card.img-over { outline: 2px dashed var(--accent); outline-offset: 3px; }
+.cc-pic { margin-right: 2px; }
+.bible-lightbox {
+  position: fixed; inset: 0; z-index: 1000; background: rgba(12, 12, 12, 0.86);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  cursor: zoom-out; outline: none;
+}
+.bible-lightbox img { max-width: 88vw; max-height: 80vh; border-radius: 4px; box-shadow: 0 18px 60px rgba(0,0,0,0.5); }
+.bible-lightbox .bl-caption { color: #bbb; font-family: var(--body-font); font-size: 15px; letter-spacing: 1px; }
+body.night .bible-img { border-color: #3a3835; background: #2a2926; }
+body.light .bible-lightbox { background: rgba(60, 55, 45, 0.82); }
+@media (prefers-reduced-motion: no-preference) {
+  .bible-lightbox { animation: bl-in 0.15s ease; }
+  @keyframes bl-in { from { opacity: 0; } to { opacity: 1; } }
+}
+/* fields beside a portrait narrow to the space left, label and line together */
+.cast-card .cc-field, .cast-card .cc-row { display: flow-root; }
+.cast-card .cc-row { display: flex; }
+.cast-card .cc-row .cc-field { min-width: 0; }

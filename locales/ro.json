@@ -724,5 +724,13 @@
   "Import from another book": "Importă din altă carte",
   "Character": "Personaj",
   "Imported: {n}": "Importate: {n}",
-  "{name} left the bible, {key} to undo": "{name} a ieșit din biblie, {key} pentru a anula"
+  "{name} left the bible, {key} to undo": "{name} a ieșit din biblie, {key} pentru a anula",
+  "Picture of {name}": "Imaginea: {name}",
+  "Click to enlarge · right-click to replace or remove": "Clic pentru a mări · clic dreapta pentru a înlocui sau elimina",
+  "Replace picture…": "Înlocuiește imaginea…",
+  "Remove picture": "Elimină imaginea",
+  "Picture…": "Imagine…",
+  "NEO couldn’t read that picture. PNG, JPEG or WebP work.": "NEO nu a putut citi imaginea. Merg PNG, JPEG sau WebP.",
+  "Picture removed, {key} to undo": "Imagine eliminată, {key} pentru a anula",
+  "Choose a picture": "Alege o imagine"
 }

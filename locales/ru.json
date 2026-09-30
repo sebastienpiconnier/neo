@@ -745,5 +745,13 @@
   "Import from another book": "Импорт из другой книги",
   "Character": "Персонаж",
   "Imported: {n}": "Импортировано: {n}",
-  "{name} left the bible, {key} to undo": "{name} удалён из библии, отменить: {key}"
+  "{name} left the bible, {key} to undo": "{name} удалён из библии, отменить: {key}",
+  "Picture of {name}": "Изображение: {name}",
+  "Click to enlarge · right-click to replace or remove": "Щелчок увеличит · правый щелчок заменит или уберёт",
+  "Replace picture…": "Заменить изображение…",
+  "Remove picture": "Убрать изображение",
+  "Picture…": "Изображение…",
+  "NEO couldn’t read that picture. PNG, JPEG or WebP work.": "NEO не смог прочитать изображение. Подойдут PNG, JPEG или WebP.",
+  "Picture removed, {key} to undo": "Изображение убрано, отменить: {key}",
+  "Choose a picture": "Выберите изображение"
 }

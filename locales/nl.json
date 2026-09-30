@@ -691,5 +691,13 @@
   "Import from another book": "Importeren uit een ander boek",
   "Character": "Personage",
   "Imported: {n}": "Geïmporteerd: {n}",
-  "{name} left the bible, {key} to undo": "{name} is uit de bijbel verdwenen, {key} om ongedaan te maken"
+  "{name} left the bible, {key} to undo": "{name} is uit de bijbel verdwenen, {key} om ongedaan te maken",
+  "Picture of {name}": "Afbeelding van {name}",
+  "Click to enlarge · right-click to replace or remove": "Klik om te vergroten · rechtsklik om te vervangen of te verwijderen",
+  "Replace picture…": "Afbeelding vervangen…",
+  "Remove picture": "Afbeelding verwijderen",
+  "Picture…": "Afbeelding…",
+  "NEO couldn’t read that picture. PNG, JPEG or WebP work.": "NEO kon die afbeelding niet lezen. PNG, JPEG of WebP werken.",
+  "Picture removed, {key} to undo": "Afbeelding verwijderd, {key} om ongedaan te maken",
+  "Choose a picture": "Kies een afbeelding"
 }

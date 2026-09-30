@@ -645,5 +645,13 @@
   "Import from another book": "Başka bir kitaptan içe aktar",
   "Character": "Karakter",
   "Imported: {n}": "İçe aktarılan: {n}",
-  "{name} left the bible, {key} to undo": "{name} incilden çıktı, geri almak için {key}"
+  "{name} left the bible, {key} to undo": "{name} incilden çıktı, geri almak için {key}",
+  "Picture of {name}": "{name} görseli",
+  "Click to enlarge · right-click to replace or remove": "Büyütmek için tıklayın · değiştirmek ya da kaldırmak için sağ tıklayın",
+  "Replace picture…": "Görseli değiştir…",
+  "Remove picture": "Görseli kaldır",
+  "Picture…": "Görsel…",
+  "NEO couldn’t read that picture. PNG, JPEG or WebP work.": "NEO bu görseli okuyamadı. PNG, JPEG veya WebP olur.",
+  "Picture removed, {key} to undo": "Görsel kaldırıldı, geri almak için {key}",
+  "Choose a picture": "Bir görsel seçin"
 }

@@ -694,5 +694,13 @@
   "Import from another book": "Aus einem anderen Buch importieren",
   "Character": "Figur",
   "Imported: {n}": "Importiert: {n}",
-  "{name} left the bible, {key} to undo": "{name} ist aus der Bibel verschwunden, {key} macht es rückgängig"
+  "{name} left the bible, {key} to undo": "{name} ist aus der Bibel verschwunden, {key} macht es rückgängig",
+  "Picture of {name}": "Bild von {name}",
+  "Click to enlarge · right-click to replace or remove": "Klicken zum Vergrößern · Rechtsklick zum Ersetzen oder Entfernen",
+  "Replace picture…": "Bild ersetzen…",
+  "Remove picture": "Bild entfernen",
+  "Picture…": "Bild…",
+  "NEO couldn’t read that picture. PNG, JPEG or WebP work.": "NEO konnte das Bild nicht lesen. PNG, JPEG oder WebP gehen.",
+  "Picture removed, {key} to undo": "Bild entfernt, {key} macht es rückgängig",
+  "Choose a picture": "Bild wählen"
 }

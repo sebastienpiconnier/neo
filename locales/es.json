@@ -695,5 +695,13 @@
   "Import from another book": "Importar de otro libro",
   "Character": "Personaje",
   "Imported: {n}": "Importados: {n}",
-  "{name} left the bible, {key} to undo": "{name} salió de la biblia, {key} para deshacer"
+  "{name} left the bible, {key} to undo": "{name} salió de la biblia, {key} para deshacer",
+  "Picture of {name}": "Imagen de {name}",
+  "Click to enlarge · right-click to replace or remove": "Clic para ampliar · clic derecho para reemplazar o quitar",
+  "Replace picture…": "Reemplazar imagen…",
+  "Remove picture": "Quitar imagen",
+  "Picture…": "Imagen…",
+  "NEO couldn’t read that picture. PNG, JPEG or WebP work.": "NEO no pudo leer esa imagen. Sirven PNG, JPEG o WebP.",
+  "Picture removed, {key} to undo": "Imagen quitada, {key} para deshacer",
+  "Choose a picture": "Elegir una imagen"
 }
