@@ -258,8 +258,9 @@ ipcMain.handle('library:write', (_e, data) => {
 ipcMain.handle('book:create', (_e, meta) => {
   ensureLibrary();
   // folders carry a slug of the title when it's known at creation (imports),
-  // so the library reads like a bookshelf in Finder too
-  const slug = String(meta.title || '').toLowerCase()
+  // so the library reads like a bookshelf in Finder too. Accents come off
+  // first, so "Capítulo" reads "capitulo", not "cap-tulo"
+  const slug = String(meta.title || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);
   const id = 'book-' + (slug ? slug + '-' : '') +
     Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
@@ -1117,6 +1118,13 @@ async function dailyBackup() {
 
 // ---------------------------------------------------------------------------
 // Window
+// The window's own color, seen for a moment before the page draws and at the
+// edges while it resizes: the room's color, dark or (View → Page → Light) light
+function roomColor(theme) { return theme === 'light' ? '#efede8' : '#191919'; }
+function libraryPageTheme() {
+  try { return JSON.parse(fs.readFileSync(LIBRARY_FILE, 'utf8')).pageTheme || 'night'; } catch { return 'night'; }
+}
+
 // ---------------------------------------------------------------------------
 function createWindow() {
   // the window comes back the size and place it was left, when that place
@@ -1139,7 +1147,7 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
-    backgroundColor: '#191919',
+    backgroundColor: roomColor(libraryPageTheme()),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -1173,13 +1181,31 @@ function createWindow() {
   win.on('move', remember);
   win.on('close', remember);
 
+  // Right-click on text: Cut, Copy, Paste, Select All — and nothing else.
+  // Handing macOS the frame (where the selection sits) is what invites it to
+  // add Writing Tools, and NEO carries no generative-AI tools, ever, so the
+  // frame stays out. NEO's own right-click menus (shelves, covers, chapter
+  // headings, flagged words) cancel the event first, so this never comes up
+  // over them.
+  win.webContents.on('context-menu', (_e, params) => {
+    if (!params.isEditable && !params.selectionText) return;
+    const can = params.editFlags || {};
+    const items = [];
+    if (params.isEditable) items.push({ role: 'cut', label: t('Cut'), enabled: !!can.canCut });
+    items.push({ role: 'copy', label: t('Copy'), enabled: !!can.canCopy });
+    if (params.isEditable) items.push({ role: 'paste', label: t('Paste'), enabled: !!can.canPaste });
+    items.push({ type: 'separator' }, { role: 'selectAll', label: t('Select All') });
+    Menu.buildFromTemplate(items).popup({ window: win });
+  });
+
   // NEO does its own spellchecking (see spell:* handlers) — the engine's
   // checker proved unreliable at scanning existing text, so it stays off
   win.webContents.session.setSpellCheckerEnabled(false);
 }
 
 // ---------------------------------------------------------------------------
-// Spellcheck: NEO's own bundled Hunspell dictionaries via nspell, identical
+// Spellcheck: NEO's own bundled Hunspell dictionaries, checked by Hunspell
+// itself (WebAssembly, in spell-worker.js), identical
 // on every platform. The renderer paints the squiggles and asks for
 // suggestions. Edit → Spellcheck Language picks the dictionary; the choice
 // lives in library.json so it travels with the writer's books.
@@ -1196,12 +1222,13 @@ const SPELL_LANGUAGES = {
   'de': { label: 'Deutsch', pkg: 'dictionary-de' },
   'nl': { label: 'Nederlands', pkg: 'dictionary-nl' },
   'pl': { label: 'Polski', pkg: 'dictionary-pl' },
+  'pt-BR': { label: 'Português (Brasil)', pkg: 'dictionary-pt' },
   'ro': { label: 'Română', pkg: 'dictionary-ro' },
   'ru': { label: 'Русский', pkg: 'dictionary-ru' }
 };
 
-// The dictionary work runs in a helper process (spell-worker.js): parsing
-// French takes seconds, and the writing room must never wait for it.
+// The dictionary work runs in a helper process (spell-worker.js), so the
+// writing room never waits for a dictionary to load.
 let spellChild = null;
 let spellSeq = 0;
 const spellWaiting = new Map();
@@ -1262,6 +1289,9 @@ function chosenSpellLanguage() {
 function defaultSpellLanguage() {
   const ui = String(uiLanguage || 'en');
   if (SPELL_LANGUAGES[ui]) return ui;
+  // NEO's Portuguese interface is Brazilian; the dictionary is too. The
+  // European interface (pt-PT) leaves the choice to the writer.
+  if (ui === 'pt' || ui === 'pt-BR') return 'pt-BR';
   const base = ui.split('-')[0];
   return SPELL_LANGUAGES[base] ? base : 'en-US';
 }
@@ -1321,20 +1351,32 @@ ipcMain.on('typewriter:state', (_e, on) => {
   typewriterState = on;
   try { buildMenu(); } catch (err) { logError('menu', err); }
 });
+// View → Vim Keys shows whether they're on
+let vimState = false;
+ipcMain.on('vim:state', (_e, on) => {
+  on = !!on;
+  if (on === vimState) return;
+  vimState = on;
+  try { buildMenu(); } catch (err) { logError('menu', err); }
+});
 // View → Interface Size shows its choice
 let uiZoomState = 1;
 ipcMain.on('uizoom:state', (_e, z) => {
-  z = [1, 1.25, 1.5, 2].includes(z) ? z : 1;
+  z = [1, 1.25, 1.5, 2, 2.5, 3].includes(z) ? z : 1;
   if (z === uiZoomState) return;
   uiZoomState = z;
   try { buildMenu(); } catch (err) { logError('menu', err); }
 });
 // View menu ticks: the focus level, the page, and Brighter Interface
 let viewState = { focus: 'off', pageTheme: 'night', uiBright: false };
-ipcMain.on('view:state', (_e, st) => {
+ipcMain.on('view:state', (e, st) => {
   st = st || {};
   const next = { focus: st.focus || 'off', pageTheme: st.pageTheme || 'night', uiBright: !!st.uiBright };
   if (JSON.stringify(next) === JSON.stringify(viewState)) return;
+  if (next.pageTheme !== viewState.pageTheme) {
+    const w = BrowserWindow.fromWebContents(e.sender);
+    if (w && !w.isDestroyed()) w.setBackgroundColor(roomColor(next.pageTheme));
+  }
   viewState = next;
   try { buildMenu(); } catch (err) { logError('menu', err); }
 });
@@ -1354,10 +1396,10 @@ function buildMenu() {
   // them, so the menu names the faces bundled in fonts/ (see styles.css).
   // The Windows list stays the one the renderer already understands.
   const bodyFonts = isMac
-    ? ['Georgia', 'Palatino', 'Baskerville', 'Hoefler Text', 'Iowan Old Style']
+    ? ['Georgia', 'Palatino', 'Baskerville', 'Hoefler Text', 'Iowan Old Style', 'Jost']
     : isWin
-      ? ['Georgia', 'Palatino', 'Baskerville', 'Cambria', 'Constantia']
-      : ['Gelasio', 'TeX Gyre Pagella', 'Libre Baskerville', 'Alegreya', 'Source Serif Pro'];
+      ? ['Georgia', 'Palatino', 'Baskerville', 'Cambria', 'Constantia', 'Jost']
+      : ['Gelasio', 'TeX Gyre Pagella', 'Libre Baskerville', 'Alegreya', 'Source Serif Pro', 'Jost'];
   const template = [
     // appMenu exists only on macOS — including it on Windows throws,
     // which is exactly what kept NEO from ever opening a window there
@@ -1430,7 +1472,10 @@ function buildMenu() {
       ]
     },
     {
-      label: t('Edit'),
+      // On a Mac the zero-width space keeps macOS from recognizing this as
+      // "the Edit menu" and slipping Writing Tools and AutoFill into it.
+      // No generative-AI tools in NEO — not now, not later. It reads "Edit".
+      label: t('Edit') + (isMac ? '\u200B' : ''),
       submenu: [
         // standard items carry their own labels, so they follow NEO's language
         { role: 'undo', label: t('Undo') }, { role: 'redo', label: t('Redo') },
@@ -1551,12 +1596,20 @@ function buildMenu() {
             { label: t('Off'), type: 'radio', checked: viewState.focus === 'off', click: () => sendToWindow({ type: 'focus', value: 'off' }) }
           ]
         },
+        {
+          label: t('Vim Keys'),
+          type: 'checkbox',
+          checked: vimState,
+          click: () => sendToWindow({ type: 'vim' })
+        },
         { type: 'separator' },
         {
           label: t('Page'),
           submenu: [
-            { label: t('Night'), type: 'radio', checked: viewState.pageTheme !== 'paper', click: () => sendToWindow({ type: 'pageTheme', value: 'night' }) },
-            { label: t('Paper'), type: 'radio', checked: viewState.pageTheme === 'paper', click: () => sendToWindow({ type: 'pageTheme', value: 'paper' }) }
+            { label: t('Night'), type: 'radio', checked: viewState.pageTheme !== 'paper' && viewState.pageTheme !== 'light', click: () => sendToWindow({ type: 'pageTheme', value: 'night' }) },
+            { label: t('Paper'), type: 'radio', checked: viewState.pageTheme === 'paper', click: () => sendToWindow({ type: 'pageTheme', value: 'paper' }) },
+            // white paper in a light room: the whole app, shelf included
+            { label: t('Light'), type: 'radio', checked: viewState.pageTheme === 'light', click: () => sendToWindow({ type: 'pageTheme', value: 'light' }) }
           ]
         },
         {
@@ -1567,8 +1620,9 @@ function buildMenu() {
         },
         {
           label: t('Interface Size'),
-          submenu: [[1, t('Normal')], [1.25, t('Large (125%)')], [1.5, t('Larger (150%)')], [2, t('Largest (200%)')]].map(([z, label]) => ({
-            label,
+          // as far as the page zoom goes: 300%
+          submenu: [1, 1.25, 1.5, 2, 2.5, 3].map((z) => ({
+            label: z === 1 ? t('Normal') : new Intl.NumberFormat(uiLanguage || 'en', { style: 'percent' }).format(z),
             type: 'radio',
             checked: uiZoomState === z,
             click: () => sendToWindow({ type: 'uiZoom', value: z })
@@ -1637,35 +1691,64 @@ function compareVersions(a, b) {
 // newer Chromium ignores attribute changes on text it has already looked at
 ipcMain.handle('app:version', () => app.getVersion());
 
-// Help → Check for Update…
+// Updating
 //
-// Packaged builds update themselves: electron-updater reads the release's
-// latest*.yml, downloads the installer in the background (progress goes to
-// the window), and "Restart to update" swaps the app in. The page saves
-// itself before asking for the restart. A build that can't self-update —
-// `npm start`, the Windows portable .exe, anything unsigned — falls back
-// to the release page on GitHub, as before.
+// Packaged builds keep themselves current without being asked: a few seconds
+// after launch (and every few hours after that) NEO looks at the latest
+// GitHub release, and if it's newer, electron-updater starts downloading it
+// straight away, quietly. The new version goes in the next time NEO quits
+// and opens again. Help → Check for Update… shows where that stands — most
+// often it's already downloaded, and the window offers "Restart to update"
+// (the page saves itself first). A build that can't self-update — `npm
+// start`, the Windows portable .exe, anything unsigned — falls back to the
+// release page on GitHub, as before.
 let updater = null;          // electron-updater's autoUpdater, wired once
 let updaterReady = false;    // an update is downloaded and waiting
+// where the background download stands, so the window can pick it up mid-way
+const upd = { state: 'idle', version: '', percent: 0, transferred: 0, total: 0, message: '' };
 function getUpdater() {
   if (updater || !app.isPackaged) return updater;
   const { autoUpdater } = require('electron-updater');
   autoUpdater.logger = null;
-  autoUpdater.autoDownload = false;      // the writer says when
+  autoUpdater.autoDownload = true;       // found it? fetch it — nobody should have to ask
   autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on('update-available', (info) => {
+    Object.assign(upd, { state: 'downloading', version: info && info.version || '', percent: 0, transferred: 0, total: 0, message: '' });
+    sendToWindow({ type: 'update', ...upd });
+  });
   autoUpdater.on('download-progress', (p) => {
-    sendToWindow({ type: 'update', state: 'downloading', percent: p.percent, transferred: p.transferred, total: p.total });
+    Object.assign(upd, { state: 'downloading', percent: p.percent, transferred: p.transferred, total: p.total });
+    sendToWindow({ type: 'update', ...upd });
   });
   autoUpdater.on('update-downloaded', (info) => {
     updaterReady = true;
-    sendToWindow({ type: 'update', state: 'ready', version: info && info.version });
+    Object.assign(upd, { state: 'ready', percent: 100 });
+    if (info && info.version) upd.version = info.version;
+    sendToWindow({ type: 'update', ...upd });
   });
   autoUpdater.on('error', (err) => {
     logError('updater', err);
-    sendToWindow({ type: 'update', state: 'error', message: String(err && err.message || err) });
+    if (updaterReady) return; // a failed later look doesn't undo a finished download
+    Object.assign(upd, { state: 'error', message: String(err && err.message || err) });
+    sendToWindow({ type: 'update', ...upd });
   });
   updater = autoUpdater;
   return updater;
+}
+
+// one look at GitHub; if something newer is there, the download starts on
+// its own (autoDownload). Never twice at once, and not again once it's here.
+let updateLook = null;
+function lookForUpdate() {
+  const u = getUpdater();
+  if (!u) return Promise.resolve(null);
+  if (updaterReady || upd.state === 'downloading') return Promise.resolve(null);
+  if (!updateLook) {
+    updateLook = u.checkForUpdates()
+      .catch((err) => { logError('updater', err); throw err; })
+      .finally(() => { updateLook = null; });
+  }
+  return updateLook;
 }
 
 // what's on GitHub, for the fallback path and the release link
@@ -1684,11 +1767,19 @@ ipcMain.handle('update:check', async () => {
   try {
     const u = getUpdater();
     if (u) {
-      const result = await u.checkForUpdates();
-      const latestVersion = result && result.updateInfo && result.updateInfo.version || '';
-      const hasUpdate = !!latestVersion && compareVersions(latestVersion, currentVersion) > 0;
+      // already on its way (or already here): just say where it is
+      if (!updaterReady && upd.state !== 'downloading') {
+        if (upd.state === 'error') upd.state = 'idle'; // asking again is a retry
+        const result = await lookForUpdate();
+        const v = result && result.updateInfo && result.updateInfo.version || '';
+        if (v && compareVersions(v, currentVersion) > 0 && upd.state === 'idle') {
+          Object.assign(upd, { state: 'downloading', version: v });
+        }
+      }
       latestReleaseFromGitHub().catch(() => {}); // the release link, for the fallback button
-      return { hasUpdate, latestVersion, currentVersion, canInstall: true, ready: updaterReady };
+      const latestVersion = upd.version;
+      const hasUpdate = !!latestVersion && compareVersions(latestVersion, currentVersion) > 0;
+      return { ...upd, hasUpdate, latestVersion, currentVersion, canInstall: true, ready: updaterReady };
     }
   } catch (err) {
     logError('update', err); // fall through to the plain check
@@ -1704,20 +1795,6 @@ ipcMain.handle('update:check', async () => {
   } catch (err) {
     logError('update', err);
     return { error: true };
-  }
-});
-
-ipcMain.handle('update:download', async () => {
-  const u = getUpdater();
-  if (!u) return false;
-  if (updaterReady) { sendToWindow({ type: 'update', state: 'ready' }); return true; }
-  try {
-    await u.downloadUpdate();
-    return true;
-  } catch (err) {
-    logError('updater', err);
-    sendToWindow({ type: 'update', state: 'error', message: String(err && err.message || err) });
-    return false;
   }
 });
 
@@ -1749,23 +1826,17 @@ if (!app.requestSingleInstanceLock()) {
   });
 }
 
-// A quiet look at startup: nothing downloads, nothing pops up; if a newer
-// NEO exists the window shows one line, once, pointing at Help → Check for
-// Update…. Any failure is logged and swallowed, so an offline machine or an
-// unsigned build never notices.
+// The background look: a few seconds after launch, then every four hours
+// for a writer who leaves NEO open for days. Nothing pops up; any failure is
+// logged and swallowed, so an offline machine or an unsigned build never
+// notices.
+const UPDATE_EVERY = 4 * 60 * 60 * 1000;
 function checkForUpdates() {
   if (!app.isPackaged) return;
-  setTimeout(async () => {
-    try {
-      const u = getUpdater();
-      if (!u) return;
-      const result = await u.checkForUpdates();
-      const v = result && result.updateInfo && result.updateInfo.version || '';
-      if (v && compareVersions(v, app.getVersion()) > 0) sendToWindow({ type: 'update', state: 'available', version: v });
-    } catch (err) {
-      logError('updater', err);
-    }
-  }, 8000);
+  const look = () => { lookForUpdate().catch(() => { /* logged in lookForUpdate */ }); };
+  setTimeout(look, 8000);
+  const timer = setInterval(look, UPDATE_EVERY);
+  if (timer.unref) timer.unref();
 }
 
 app.whenReady().then(() => {
@@ -1807,6 +1878,8 @@ app.whenReady().then(() => {
         // these two official switches remove the ones writers can't use here
         systemPreferences.setUserDefault('NSDisabledDictationMenuItem', 'boolean', true);
         systemPreferences.setUserDefault('NSDisabledCharacterPaletteMenuItem', 'boolean', true);
+        // AutoFill (contacts, passwords) has no business on a manuscript page
+        systemPreferences.setUserDefault('NSAutoFillHeuristicControllerEnabled', 'boolean', false);
         // …and "Enter Full Screen" into the View menu, next to NEO's own
         // Full Screen item (⇧⌘F): one is enough
         systemPreferences.setUserDefault('NSFullScreenMenuItemEverywhere', 'boolean', false);
