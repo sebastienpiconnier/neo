@@ -744,5 +744,9 @@
   "Add pictures…": "Dodaj obrazy…",
   "Add pictures (or drop them on the card)": "Dodaj obrazy (albo upuść je na kartę)",
   "Gender": "Płeć",
-  "Choose pictures": "Wybierz obrazy"
+  "Choose pictures": "Wybierz obrazy",
+  "Delete this card?": "Usunąć tę kartę?",
+  "{name} leaves the bible.": "{name} znika z biblii.",
+  "Gallery": "Galeria",
+  "{name} leaves the bible. The text of the book is not touched.": "{name} znika z biblii. Tekst książki pozostaje nietknięty."
 }

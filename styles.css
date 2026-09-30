@@ -1703,3 +1703,25 @@ body.night .bible-portrait, body.night .bg-thumb { border-color: #3a3835; backgr
 body.night .bible-portrait.empty { background: none; border-color: #4a4742; }
 body.night .bible-portrait.empty svg { stroke: #5a5650; }
 body.night .bg-add { border-color: #4a4742; color: #6a655c; }
+
+/* portrait: the circle floats with its little × */
+.bible-portrait-wrap { float: right; position: relative; margin: 2px 0 8px 16px; }
+.bible-portrait-wrap .bible-portrait { float: none; margin: 0; }
+.bp-remove {
+  position: absolute; top: -2px; right: -2px; width: 22px; height: 22px; padding: 0;
+  border-radius: 50%; border: 1px solid #d8d2c2; background: var(--paper); color: #8d8778;
+  font-size: 14px; line-height: 20px; text-align: center; opacity: 0; transition: opacity 0.12s;
+}
+.bible-portrait-wrap:hover .bp-remove, .bp-remove:focus-visible { opacity: 1; }
+.bp-remove:hover { color: var(--red); border-color: var(--red); }
+@media (hover: none) { .bp-remove { opacity: 1; } }
+body.night .bp-remove { background: #2a2926; border-color: #4a4742; }
+.cc-gallery .bible-gallery { margin-top: 6px; }
+.cc-gallery { clear: both; }
+/* a destructive answer in a confirm */
+.btn-danger {
+  background: none; border: 1px solid #6b3a34; border-radius: 6px;
+  padding: 8px 20px; color: #d97b6c; font-size: 14px; cursor: pointer;
+}
+.btn-danger:hover { background: rgba(217, 123, 108, 0.1); }
+body.light .btn-danger { border-color: #d9a79f; color: #b0463a; }

@@ -303,6 +303,35 @@ function askInput(title, placeholder, value = '') {
   });
 }
 
+// Yes or no, in the same dialog as a name is asked in: Cancel, and the
+// action spelled out on the other button. Resolves true or false.
+function confirmModal(title, message, okLabel, { danger = false } = {}) {
+  return new Promise((resolve) => {
+    const bd = document.createElement('div');
+    bd.className = 'modal-backdrop';
+    bd.innerHTML = `
+      <div class="modal" style="width:380px">
+        <h2 style="font-size:16px"></h2>
+        <p></p>
+        <div style="text-align:right;margin-top:14px">
+          <button class="m-cancel btn-quiet" style="margin-right:10px"></button>
+          <button class="m-ok ${danger ? 'btn-danger' : 'btn-gold'}"></button>
+        </div>
+      </div>`;
+    bd.querySelector('h2').textContent = title;
+    bd.querySelector('p').textContent = message;
+    bd.querySelector('.m-cancel').textContent = t('Cancel');
+    const ok = bd.querySelector('.m-ok');
+    ok.textContent = okLabel;
+    document.body.appendChild(bd);
+    const done = (v) => { bd.remove(); resolve(v); };
+    ok.onclick = () => done(true);
+    bd.querySelector('.m-cancel').onclick = () => done(false);
+    bd.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); done(false); } });
+    bd.querySelector('.m-cancel').focus();
+  });
+}
+
 // A list of choices, null on cancel.
 function optionModal(title, message, options) {
   return new Promise((resolve) => {
@@ -5782,6 +5811,7 @@ const WORLD_TYPES = {
 };
 
 let bibleFilter = 'all';
+const bibleMore = new Set(); // cards showing all their details (gallery, counts, empty fields)
 let bibleQuery = '';
 const bibleOpen = new Set(); // world cards unfolded this session
 
@@ -6023,9 +6053,11 @@ function worldCard(w) {
   const body = card.querySelector('.wc-body');
   body.hidden = !open;
   if (open) {
+    const all = bibleMore.has(w.id);
     for (const [f, label, ph] of [...fields, ['notes', tk('Notes'), tk('Anything else')]]) {
       const field = document.createElement('label');
       field.className = 'cc-field';
+      field.hidden = !all && !(w[f] || '').trim();
       const span = document.createElement('span');
       span.textContent = t(label);
       const el = document.createElement('textarea');
@@ -6045,13 +6077,22 @@ function worldCard(w) {
     del.className = 'cc-del';
     del.textContent = t('Delete');
     del.onclick = () => deleteWorld(w);
-    const gallery = galleryRow(w);
-    if (gallery) body.appendChild(gallery);
+    const gallery = gallerySection(w);
+    if (gallery && all) body.appendChild(gallery);
     const btns = document.createElement('span');
     btns.className = 'cc-buttons';
-    const pic = pictureButton(w);
-    if (pic) btns.appendChild(pic);
-    btns.appendChild(del);
+    const more = document.createElement('button');
+    more.className = 'cc-more';
+    more.textContent = all ? t('Fewer details') : t('More details');
+    more.setAttribute('aria-expanded', all ? 'true' : 'false');
+    more.onclick = () => {
+      if (all) bibleMore.delete(w.id); else bibleMore.add(w.id);
+      const again = worldCard(w);
+      card.replaceWith(again);
+      const f = again.querySelector('.wc-body .cc-more');
+      if (f) f.focus();
+    };
+    btns.append(more, del);
     meta.append(document.createElement('span'), btns);
     body.appendChild(meta);
     requestAnimationFrame(() => body.querySelectorAll('textarea').forEach(growField));
@@ -6063,6 +6104,7 @@ function addWorld(type) {
   const w = { id: castId(), type, name: '' };
   worldList().push(w);
   bibleOpen.add(w.id);
+  bibleMore.add(w.id);
   castChanged();
   if (bibleFilter === 'cast' || bibleFilter === 'story') bibleFilter = 'world';
   bibleQuery = '';
@@ -6070,7 +6112,8 @@ function addWorld(type) {
   return w;
 }
 
-function deleteWorld(w) {
+async function deleteWorld(w) {
+  if (!await confirmModal(t('Delete this card?'), t('{name} leaves the bible.', { name: w.name || worldTypeName(w.type) }), t('Delete'), { danger: true })) return;
   snapshotStructure(t('Delete'));
   book.world = worldList().filter((x) => x.id !== w.id);
   book.worldRemoved = [...new Set([...(book.worldRemoved || []), w.id])];
@@ -6147,7 +6190,19 @@ function portraitCircle(c) {
     if (choice === 'remove') removeBibleImage(c, c.portrait);
   });
   wirePictureDrop(b, c, 'portrait');
-  return b;
+  const wrap = document.createElement('div');
+  wrap.className = 'bible-portrait-wrap';
+  wrap.appendChild(b);
+  if (c.portrait) {
+    const x = document.createElement('button');
+    x.className = 'bp-remove';
+    x.textContent = '×';
+    x.setAttribute('aria-label', t('Remove portrait'));
+    x.title = t('Remove portrait');
+    x.onclick = () => removeBibleImage(c, c.portrait);
+    wrap.appendChild(x);
+  }
+  return wrap;
 }
 
 // the pictures along the bottom of a card, and a tile to add more
@@ -6186,18 +6241,21 @@ function galleryRow(o) {
   add.title = t('Add pictures (or drop them on the card)');
   add.onclick = () => pickBibleImages(o, 'gallery');
   row.appendChild(add);
-  row.hidden = !list.length; // an empty card offers "Add pictures…" below instead
   return row;
 }
 
-function pictureButton(o) {
-  if (!canBibleImages() || galleryOf(o).length) return null;
-  const b = document.createElement('button');
-  b.className = 'cc-more cc-pic';
-  b.textContent = t('Add pictures…');
-  b.onclick = () => pickBibleImages(o, 'gallery');
-  return b;
+// the Gallery field: shown with the card's other details
+function gallerySection(o) {
+  const row = galleryRow(o);
+  if (!row) return null;
+  const field = document.createElement('div');
+  field.className = 'cc-field cc-gallery';
+  const span = document.createElement('span');
+  span.textContent = t('Gallery');
+  field.append(span, row);
+  return field;
 }
+
 
 // files from the Finder: on the portrait circle they become the portrait,
 // anywhere else on the card they join the gallery
@@ -6233,7 +6291,7 @@ async function addBibleImages(o, paths, where) {
   }
   if (!done.length) { toast(t('NEO couldn’t read that picture. PNG, JPEG or WebP work.')); return; }
   if (where === 'portrait') o.portrait = done[0];
-  else galleryOf(o).push(...done);
+  else { galleryOf(o).push(...done); bibleMore.add(o.id); bibleOpen.add(o.id); }
   castChanged();
   renderCharacters();
 }
@@ -6401,12 +6459,14 @@ function characterCard(c, s) {
   const more = card.querySelector('.cc-more');
   const showDetails = (all) => {
     card.classList.toggle('cc-open', all);
+    if (all) bibleMore.add(c.id); else bibleMore.delete(c.id);
     more.textContent = all ? t('Fewer details') : t('More details');
     more.setAttribute('aria-expanded', all ? 'true' : 'false');
     card.querySelectorAll('.cc-detail').forEach((fd) => {
       fd.hidden = !all && !(c[fd.dataset.f] || '').trim();
     });
     pair.hidden = !all && !(c.role || c.age || c.gender);
+    card.querySelectorAll('.cc-gallery, .cc-stats').forEach((x) => { x.hidden = !all; });
     card.querySelectorAll('textarea').forEach(growField);
   };
   more.onclick = () => {
@@ -6420,10 +6480,8 @@ function characterCard(c, s) {
   del.onclick = () => deleteCharacter(c);
   const portrait = portraitCircle(c);
   if (portrait) card.insertBefore(portrait, card.querySelector('.cc-row'));
-  const gallery = galleryRow(c);
-  if (gallery) card.insertBefore(gallery, card.querySelector('.cc-meta'));
-  const pic = pictureButton(c);
-  if (pic) card.querySelector('.cc-buttons').insertBefore(pic, more);
+  const gallery = gallerySection(c);
+  if (gallery) details.appendChild(gallery);
   wirePictureDrop(card, c, 'gallery');
   card.querySelectorAll('input, textarea').forEach((input) => {
     const f = input.dataset.f;
@@ -6436,8 +6494,8 @@ function characterCard(c, s) {
     if (input.tagName === 'TEXTAREA') input.addEventListener('input', () => growField(input));
     input.addEventListener('change', () => commitCharacterField(c, f, input, shown));
   });
-  requestAnimationFrame(() => showDetails(card.classList.contains('cc-open')));
-  showDetails(false);
+  showDetails(bibleMore.has(c.id));
+  requestAnimationFrame(() => card.querySelectorAll('textarea').forEach(growField));
   return card;
 }
 
@@ -6463,8 +6521,9 @@ function addCharacter(fields) {
   return c;
 }
 
-// no question asked, the way a chapter goes: gone at once, back with ⌘Z
-function deleteCharacter(c) {
+// asked once, then gone; ⌘Z still brings it back
+async function deleteCharacter(c) {
+  if (!await confirmModal(t('Delete this card?'), t('{name} leaves the bible. The text of the book is not touched.', { name: charName(c) }), t('Delete'), { danger: true })) return;
   snapshotStructure(t('Delete'));
   book.characters = castList().filter((x) => x.id !== c.id);
   // remembered, so a bound part that still has the card doesn't bring it back

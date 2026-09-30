@@ -763,5 +763,9 @@
   "Add pictures…": "Добавить изображения…",
   "Add pictures (or drop them on the card)": "Добавить изображения (или перетащите их на карточку)",
   "Gender": "Пол",
-  "Choose pictures": "Выберите изображения"
+  "Choose pictures": "Выберите изображения",
+  "Delete this card?": "Удалить эту карточку?",
+  "{name} leaves the bible.": "{name} исчезнет из библии.",
+  "Gallery": "Галерея",
+  "{name} leaves the bible. The text of the book is not touched.": "{name} исчезнет из библии. Текст книги не изменится."
 }

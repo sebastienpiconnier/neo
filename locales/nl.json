@@ -709,5 +709,9 @@
   "Add pictures…": "Afbeeldingen toevoegen…",
   "Add pictures (or drop them on the card)": "Afbeeldingen toevoegen (of sleep ze op de kaart)",
   "Gender": "Gender",
-  "Choose pictures": "Kies afbeeldingen"
+  "Choose pictures": "Kies afbeeldingen",
+  "Delete this card?": "Deze kaart verwijderen?",
+  "{name} leaves the bible.": "{name} verdwijnt uit de bijbel.",
+  "Gallery": "Galerij",
+  "{name} leaves the bible. The text of the book is not touched.": "{name} verdwijnt uit de bijbel. De tekst van het boek blijft onaangeroerd."
 }

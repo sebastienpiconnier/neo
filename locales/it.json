@@ -712,5 +712,9 @@
   "Add pictures…": "Aggiungi immagini…",
   "Add pictures (or drop them on the card)": "Aggiungi immagini (o trascinale sulla scheda)",
   "Gender": "Genere",
-  "Choose pictures": "Scegli immagini"
+  "Choose pictures": "Scegli immagini",
+  "Delete this card?": "Eliminare questa scheda?",
+  "{name} leaves the bible.": "{name} esce dalla bibbia.",
+  "Gallery": "Galleria",
+  "{name} leaves the bible. The text of the book is not touched.": "{name} esce dalla bibbia. Il testo del libro non viene toccato."
 }

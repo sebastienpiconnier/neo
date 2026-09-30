@@ -742,5 +742,9 @@
   "Add pictures…": "Adaugă imagini…",
   "Add pictures (or drop them on the card)": "Adaugă imagini (sau trage-le pe fișă)",
   "Gender": "Gen",
-  "Choose pictures": "Alege imagini"
+  "Choose pictures": "Alege imagini",
+  "Delete this card?": "Ștergi această fișă?",
+  "{name} leaves the bible.": "{name} iese din biblie.",
+  "Gallery": "Galerie",
+  "{name} leaves the bible. The text of the book is not touched.": "{name} iese din biblie. Textul cărții nu este atins."
 }

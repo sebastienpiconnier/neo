@@ -663,5 +663,9 @@
   "Add pictures…": "Görsel ekle…",
   "Add pictures (or drop them on the card)": "Görsel ekle (ya da karta bırakın)",
   "Gender": "Cinsiyet",
-  "Choose pictures": "Görselleri seçin"
+  "Choose pictures": "Görselleri seçin",
+  "Delete this card?": "Bu kart silinsin mi?",
+  "{name} leaves the bible.": "{name} incilden çıkar.",
+  "Gallery": "Galeri",
+  "{name} leaves the bible. The text of the book is not touched.": "{name} incilden çıkar. Kitabın metnine dokunulmaz."
 }
