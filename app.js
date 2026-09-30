@@ -4858,7 +4858,7 @@ function switchTab(name) {
     returnTo();
     findHere();
   } else if (name === 'characters') {
-    $('#aux-title').textContent = t('Characters');
+    $('#aux-title').textContent = t('Story Bible');
     cList.hidden = false;
     renderCharacters();
     returnTo();
@@ -5598,12 +5598,126 @@ function castMetaText(s) {
   ].join(' · ');
 }
 
+/* --- The Story Bible tab: the story, the characters, the world ---- */
+/*  Only characters are recognized in the text (@, the chapter pane,  */
+/*  renames). The story and the world are reference: typed cards to   */
+/*  read and fill, folded until opened.                                */
+
+const STORY_FIELDS = [
+  ['braindump', tk('Braindump'), tk('Ideas, images, scraps: anything, in any order'), true],
+  ['genre', tk('Genre'), tk('Thriller, romantic comedy, YA horror…'), false],
+  ['synopsis', tk('Synopsis'), tk('The whole story in a few paragraphs, beginning to end'), true],
+  ['style', tk('Style'), tk('Voice, tense, point of view, the books it should sound like'), true]
+];
+
+// every type of world card: its name, then its fields [key, label, placeholder]
+const WORLD_TYPES = {
+  place: [tk('Place'), [['description', tk('Description'), ''], ['mood', tk('Atmosphere'), tk('Sounds, smells, light')], ['within', tk('Located in'), ''], ['happens', tk('What happens there'), '']]],
+  item: [tk('Item'), [['description', tk('Description'), ''], ['owner', tk('Who owns it'), ''], ['matters', tk('Why it matters'), ''], ['where', tk('Where it is'), '']]],
+  group: [tk('Group'), [['description', tk('Description'), tk('A family, a clan, a company, a crew…')], ['members', tk('Members'), ''], ['goal', tk('Goal'), ''], ['rules', tk('Rules'), '']]],
+  clue: [tk('Clue'), [['description', tk('Description'), ''], ['implications', tk('Implications'), tk('What it reveals, and to whom')], ['appears', tk('Where it appears'), ''], ['knows', tk('Who knows'), '']]],
+  system: [tk('System'), [['principle', tk('How it works'), tk('Magic, technology, society, religion…')], ['rules', tk('Rules'), ''], ['limits', tk('Limits and cost'), '']]],
+  event: [tk('Event'), [['when', tk('When'), ''], ['what', tk('What happened'), ''], ['consequences', tk('Consequences'), '']]],
+  other: [tk('Other'), [['description', tk('Description'), '']]]
+};
+
+let bibleFilter = 'all';
+let bibleQuery = '';
+const bibleOpen = new Set(); // world cards unfolded this session
+
+function worldList() {
+  if (!book) return [];
+  if (!Array.isArray(book.world)) book.world = [];
+  return book.world;
+}
+function storyBible() {
+  if (!book) return {};
+  if (!book.story || typeof book.story !== 'object') book.story = {};
+  return book.story;
+}
+const worldTypeName = (type) => t((WORLD_TYPES[type] || WORLD_TYPES.other)[0]);
+
+// the words a card holds, for the search box
+function cardText(o) {
+  return castFold(Object.values(o).filter((v) => typeof v === 'string' || Array.isArray(v)).flat().join(' '));
+}
+
+function bibleSection(key, title) {
+  const sec = document.createElement('section');
+  sec.className = 'bible-section';
+  sec.dataset.sec = key;
+  const h = document.createElement('h3');
+  h.className = 'bible-h';
+  h.textContent = title;
+  sec.appendChild(h);
+  return sec;
+}
+
 function renderCharacters(focusId) {
   const wrap = $('#characters-list');
+  const scroller = $('#paper-scroll');
+  const keep = scroller.scrollTop;
   wrap.innerHTML = '';
+
+  if (castPeers.length) {
+    const shared = document.createElement('div');
+    shared.className = 'cast-shared';
+    shared.textContent = t('Shared by every part of this bound book.');
+    wrap.appendChild(shared);
+  }
+
+  // filters and search
+  const bar = document.createElement('div');
+  bar.className = 'bible-bar';
+  const chips = document.createElement('div');
+  chips.className = 'bible-chips';
+  chips.setAttribute('role', 'group');
+  for (const [key, label] of [['all', tk('All')], ['story', tk('The story')], ['cast', tk('Characters')], ['world', tk('World')]]) {
+    const b = document.createElement('button');
+    b.className = 'bible-chip' + (bibleFilter === key ? ' on' : '');
+    b.textContent = t(label);
+    b.setAttribute('aria-pressed', bibleFilter === key ? 'true' : 'false');
+    b.onclick = () => { bibleFilter = key; renderCharacters(); };
+    chips.appendChild(b);
+  }
+  const search = document.createElement('input');
+  search.className = 'bible-search';
+  search.type = 'search';
+  search.spellcheck = false;
+  search.placeholder = t('Search the bible');
+  search.setAttribute('aria-label', t('Search the bible'));
+  search.value = bibleQuery;
+  search.addEventListener('input', () => { bibleQuery = search.value; applyBibleSearch(); });
+  search.addEventListener('keydown', (e) => { if (e.key === 'Escape' && search.value) { e.preventDefault(); e.stopPropagation(); search.value = ''; bibleQuery = ''; applyBibleSearch(); } });
+  bar.append(chips, search);
+  wrap.appendChild(bar);
+
+  // the story
+  const story = bibleSection('story', t('The story'));
+  const sc = document.createElement('div');
+  sc.className = 'story-card';
+  const sb = storyBible();
+  for (const [f, label, ph, long] of STORY_FIELDS) {
+    const field = document.createElement('label');
+    field.className = 'cc-field';
+    const span = document.createElement('span');
+    span.textContent = t(label);
+    const el = document.createElement(long ? 'textarea' : 'input');
+    el.spellcheck = false;
+    el.placeholder = t(ph);
+    if (long) { el.rows = 1; el.addEventListener('input', () => growField(el)); }
+    el.value = sb[f] || '';
+    el.addEventListener('change', () => { storyBible()[f] = el.value.trim(); el.value = storyBible()[f]; castChanged(); });
+    field.append(span, el);
+    sc.appendChild(field);
+  }
+  story.appendChild(sc);
+  wrap.appendChild(story);
+
+  // the characters
+  const castSec = bibleSection('cast', t('Characters'));
   const cast = castList();
   const stats = bookCastStats();
-
   if (!cast.length) {
     const empty = document.createElement('div');
     empty.className = 'cast-empty';
@@ -5611,11 +5725,13 @@ function renderCharacters(focusId) {
     const more = document.createElement('div');
     more.textContent = t('Add one here, or type @ and a name while you write.');
     empty.appendChild(more);
-    wrap.appendChild(empty);
+    castSec.appendChild(empty);
   }
-
-  for (const c of cast) wrap.appendChild(characterCard(c, stats.get(c.id)));
-
+  const castList_ = document.createElement('div');
+  castList_.className = 'bible-cards';
+  for (const c of cast) castList_.appendChild(characterCard(c, stats.get(c.id)));
+  castSec.appendChild(castList_);
+  wireReorder(castList_, castList);
   const add = document.createElement('button');
   add.className = 'cast-add';
   add.textContent = '+ ' + t('New character');
@@ -5627,18 +5743,216 @@ function renderCharacters(focusId) {
   const actions = document.createElement('div');
   actions.className = 'cast-actions';
   actions.append(add, imp);
-  wrap.appendChild(actions);
-  if (castPeers.length) {
-    const shared = document.createElement('div');
-    shared.className = 'cast-shared';
-    shared.textContent = t('Shared by every part of this bound book.');
-    wrap.insertBefore(shared, wrap.firstChild);
+  castSec.appendChild(actions);
+  wrap.appendChild(castSec);
+
+  // the world
+  const worldSec = bibleSection('world', t('World'));
+  const world = worldList();
+  if (!world.length) {
+    const empty = document.createElement('div');
+    empty.className = 'cast-empty';
+    empty.textContent = t('Places, items, groups, clues, the rules of your world.');
+    worldSec.appendChild(empty);
   }
+  const worldCards = document.createElement('div');
+  worldCards.className = 'bible-cards';
+  for (const w of world) worldCards.appendChild(worldCard(w));
+  worldSec.appendChild(worldCards);
+  wireReorder(worldCards, worldList);
+  const addW = document.createElement('button');
+  addW.className = 'cast-add';
+  addW.textContent = '+ ' + t('New element');
+  addW.onclick = async () => {
+    const type = await optionModal(t('New element'), null,
+      Object.keys(WORLD_TYPES).map((k) => ({ label: worldTypeName(k), value: k })));
+    if (type) addWorld(type);
+  };
+  const impW = document.createElement('button');
+  impW.className = 'cast-import-btn';
+  impW.textContent = t('Import from another book…');
+  impW.onclick = () => importCharacters();
+  const actionsW = document.createElement('div');
+  actionsW.className = 'cast-actions';
+  actionsW.append(addW, impW);
+  worldSec.appendChild(actionsW);
+  wrap.appendChild(worldSec);
+
+  for (const sec of wrap.querySelectorAll('.bible-section')) {
+    sec.hidden = bibleFilter !== 'all' && bibleFilter !== sec.dataset.sec;
+  }
+  applyBibleSearch();
+  scroller.scrollTop = keep;
+  requestAnimationFrame(() => wrap.querySelectorAll('textarea').forEach(growField));
 
   if (focusId) {
-    const input = wrap.querySelector(`.cast-card[data-id="${focusId}"] input`);
-    if (input) input.focus();
+    const input = wrap.querySelector(`[data-id="${focusId}"] input`);
+    if (input) { input.focus(); input.scrollIntoView({ block: 'center' }); }
   }
+}
+
+// the search box narrows the cards (and the story fields) to those that hold the words
+function applyBibleSearch() {
+  const wrap = $('#characters-list');
+  const q = castFold(bibleQuery.trim());
+  wrap.querySelectorAll('.cast-card, .world-card').forEach((card) => {
+    const o = card.classList.contains('world-card')
+      ? worldList().find((w) => w.id === card.dataset.id)
+      : castList().find((c) => c.id === card.dataset.id);
+    card.hidden = !!q && !(o && cardText(o).includes(q));
+  });
+  wrap.querySelectorAll('.story-card .cc-field').forEach((f) => {
+    const el = f.querySelector('input, textarea');
+    f.hidden = !!q && !castFold(el.value).includes(q);
+  });
+  wrap.querySelectorAll('.cast-actions, .bible-section > .cast-empty').forEach((x) => { x.hidden = !!q; });
+}
+
+function worldCard(w) {
+  const card = document.createElement('div');
+  card.className = 'world-card';
+  card.dataset.id = w.id;
+  const open = bibleOpen.has(w.id);
+  card.classList.toggle('wc-open', open);
+  const [, fields] = WORLD_TYPES[w.type] || WORLD_TYPES.other;
+  card.innerHTML = `
+    <div class="wc-head">
+      <span class="drag-grip" aria-hidden="true">⋮⋮</span>
+      <button class="wc-fold"></button>
+      <input class="wc-name" spellcheck="false" />
+      <select class="wc-type"></select>
+    </div>
+    <div class="wc-summary"></div>
+    <div class="wc-body"></div>`;
+  const fold = card.querySelector('.wc-fold');
+  fold.textContent = open ? '▾' : '▸';
+  fold.setAttribute('aria-expanded', open ? 'true' : 'false');
+  fold.setAttribute('aria-label', open ? t('Fold') : t('Unfold'));
+  fold.onclick = () => {
+    if (bibleOpen.has(w.id)) bibleOpen.delete(w.id); else bibleOpen.add(w.id);
+    card.replaceWith(worldCard(w));
+  };
+  const name = card.querySelector('.wc-name');
+  name.value = w.name || '';
+  name.placeholder = t('Name');
+  name.setAttribute('aria-label', t('Name'));
+  name.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); name.blur(); } });
+  name.addEventListener('change', () => { w.name = name.value.trim(); castChanged(); });
+  const type = card.querySelector('.wc-type');
+  type.setAttribute('aria-label', t('Type'));
+  for (const k of Object.keys(WORLD_TYPES)) {
+    const o = document.createElement('option');
+    o.value = k;
+    o.textContent = worldTypeName(k);
+    type.appendChild(o);
+  }
+  type.value = WORLD_TYPES[w.type] ? w.type : 'other';
+  type.onchange = () => { w.type = type.value; castChanged(); bibleOpen.add(w.id); card.replaceWith(worldCard(w)); };
+
+  // folded: the first thing written says what the card is
+  const first = [...fields.map((f) => f[0]), 'notes'].map((f) => (w[f] || '').trim()).find(Boolean);
+  const summary = card.querySelector('.wc-summary');
+  summary.textContent = first ? first.split('\n')[0] : '';
+  summary.hidden = open || !first;
+
+  const body = card.querySelector('.wc-body');
+  body.hidden = !open;
+  if (open) {
+    for (const [f, label, ph] of [...fields, ['notes', tk('Notes'), tk('Anything else')]]) {
+      const field = document.createElement('label');
+      field.className = 'cc-field';
+      const span = document.createElement('span');
+      span.textContent = t(label);
+      const el = document.createElement('textarea');
+      el.rows = 1;
+      el.spellcheck = false;
+      if (ph) el.placeholder = t(ph);
+      el.value = w[f] || '';
+      el.addEventListener('input', () => growField(el));
+      el.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); el.value = w[f] || ''; el.blur(); } });
+      el.addEventListener('change', () => { w[f] = el.value.trim(); castChanged(); });
+      field.append(span, el);
+      body.appendChild(field);
+    }
+    const meta = document.createElement('div');
+    meta.className = 'cc-meta';
+    const del = document.createElement('button');
+    del.className = 'cc-del';
+    del.textContent = t('Delete');
+    del.onclick = () => deleteWorld(w);
+    meta.append(document.createElement('span'), del);
+    body.appendChild(meta);
+    requestAnimationFrame(() => body.querySelectorAll('textarea').forEach(growField));
+  }
+  return card;
+}
+
+function addWorld(type) {
+  const w = { id: castId(), type, name: '' };
+  worldList().push(w);
+  bibleOpen.add(w.id);
+  castChanged();
+  if (bibleFilter === 'cast' || bibleFilter === 'story') bibleFilter = 'world';
+  bibleQuery = '';
+  renderCharacters(w.id);
+  return w;
+}
+
+async function deleteWorld(w) {
+  const ok = await optionModal(t('Delete this element?'),
+    t('{name} leaves the bible.', { name: escapeHTML(w.name || worldTypeName(w.type)) }),
+    [{ label: t('Delete'), value: 'del', danger: true }]);
+  if (ok !== 'del') return;
+  book.world = worldList().filter((x) => x.id !== w.id);
+  book.worldRemoved = [...new Set([...(book.worldRemoved || []), w.id])];
+  castChanged();
+  renderCharacters();
+}
+
+// cards reorder by their grip: drop above or below another card of the same list
+function wireReorder(list, getArr) {
+  let dragId = null;
+  list.querySelectorAll('.drag-grip').forEach((grip) => {
+    const card = grip.closest('[data-id]');
+    grip.draggable = true;
+    grip.title = t('Drag to reorder');
+    grip.addEventListener('dragstart', (e) => {
+      dragId = card.dataset.id;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('application/x-neo-bible', dragId);
+      e.dataTransfer.setDragImage(card, 20, 20);
+      card.classList.add('dragging');
+    });
+    grip.addEventListener('dragend', () => { card.classList.remove('dragging'); list.querySelectorAll('.drop-before, .drop-after').forEach((x) => x.classList.remove('drop-before', 'drop-after')); dragId = null; });
+  });
+  const target = (e) => {
+    const card = e.target.closest && e.target.closest('[data-id]');
+    if (!card || card.parentElement !== list || card.dataset.id === dragId) return null;
+    const r = card.getBoundingClientRect();
+    return { card, after: e.clientY > r.top + r.height / 2 };
+  };
+  list.addEventListener('dragover', (e) => {
+    if (!dragId) return;
+    e.preventDefault();
+    list.querySelectorAll('.drop-before, .drop-after').forEach((x) => x.classList.remove('drop-before', 'drop-after'));
+    const tg = target(e);
+    if (tg) tg.card.classList.add(tg.after ? 'drop-after' : 'drop-before');
+  });
+  list.addEventListener('drop', (e) => {
+    if (!dragId) return;
+    e.preventDefault();
+    const tg = target(e);
+    if (!tg) return;
+    const arr = getArr();
+    const from = arr.findIndex((x) => x.id === dragId);
+    if (from < 0) return;
+    const [moved] = arr.splice(from, 1);
+    let to = arr.findIndex((x) => x.id === tg.card.dataset.id);
+    if (tg.after) to++;
+    arr.splice(to, 0, moved);
+    castChanged();
+    renderCharacters();
+  });
 }
 
 // the fuller card, folded away: [field, label, placeholder, long]
@@ -5660,6 +5974,7 @@ function characterCard(c, s) {
   card.className = 'cast-card';
   card.dataset.id = c.id;
   card.innerHTML = `
+    <span class="drag-grip" aria-hidden="true">⋮⋮</span>
     <div class="cc-row">
       <label class="cc-field"><span>${t('First name')}</span><input data-f="first" spellcheck="false" /></label>
       <label class="cc-field"><span>${t('Last name')}</span><input data-f="last" spellcheck="false" /></label>
@@ -5928,8 +6243,7 @@ async function renameInBook(pairs, mutate) {
       if (peer.chapters[chId] !== old.chapters[chId]) await window.neo.writeChapter(peer.id, chId, peer.chapters[chId]);
     }
     if (peer.notes !== old.notes) await window.neo.writeAux(peer.id, 'notes', peer.notes);
-    peer.meta.characters = JSON.parse(JSON.stringify(castList()));
-    peer.meta.castRemoved = [...(book.castRemoved || [])];
+    for (const k of SHARED_KEYS) if (book[k] !== undefined) peer.meta[k] = JSON.parse(JSON.stringify(book[k]));
     await writeBookMeta(peer.id, peer.meta);
   }
   await saveMeta();
@@ -5960,34 +6274,56 @@ async function findCastPeers() {
   return out;
 }
 
+// one list merged with the same list from the other parts: by id, then
+// by name (the same person or place made twice before binding)
+function mergeShared(own, theirs, removed, key) {
+  const ids = new Set(own.map((x) => x.id));
+  const keys = new Set(own.map(key));
+  let changed = false;
+  for (const x of theirs || []) {
+    if (ids.has(x.id) || removed.has(x.id) || keys.has(key(x))) continue;
+    ids.add(x.id);
+    keys.add(key(x));
+    own.push(JSON.parse(JSON.stringify(x)));
+    changed = true;
+  }
+  const kept = own.filter((x) => !removed.has(x.id));
+  return { list: kept, changed: changed || kept.length !== own.length };
+}
+
 async function syncCastOnOpen() {
   const opened = book;
   const peers = await findCastPeers();
   if (book !== opened) return;
   castPeers = peers;
   if (!peers.length) return;
-  const own = castList();
-  const removed = new Set(book.castRemoved || []);
-  const ids = new Set(own.map((c) => c.id));
-  const names = new Set(own.map((c) => castFold(charName(c))));
-  let changed = false;
+  const castGone = new Set(book.castRemoved || []);
+  const worldGone = new Set(book.worldRemoved || []);
+  const metas = [];
   for (const id of peers) {
     const m = await window.neo.readBookMeta(id);
-    if (!m || book !== opened) continue;
-    (m.castRemoved || []).forEach((x) => removed.add(x));
-    for (const c of m.characters || []) {
-      if (ids.has(c.id) || names.has(castFold(charName(c)))) continue;
-      ids.add(c.id);
-      names.add(castFold(charName(c)));
-      own.push(JSON.parse(JSON.stringify(c)));
-      changed = true;
-    }
+    if (book !== opened) return;
+    if (!m) continue;
+    metas.push(m);
+    (m.castRemoved || []).forEach((x) => castGone.add(x));
+    (m.worldRemoved || []).forEach((x) => worldGone.add(x));
   }
-  if (book !== opened) return;
-  const kept = own.filter((c) => !removed.has(c.id));
-  if (kept.length !== own.length) changed = true;
-  book.characters = kept;
-  if (removed.size) book.castRemoved = [...removed];
+  let changed = false;
+  let cast = castList();
+  let world = worldList();
+  const story = storyBible();
+  for (const m of metas) {
+    const a = mergeShared(cast, m.characters, castGone, (c) => castFold(charName(c)));
+    cast = a.list;
+    const b = mergeShared(world, m.world, worldGone, (w) => (w.type || '') + ':' + castFold(w.name || w.id));
+    world = b.list;
+    changed = changed || a.changed || b.changed;
+    for (const [k, v] of Object.entries(m.story || {})) if (v && !story[k]) { story[k] = v; changed = true; }
+  }
+  book.characters = cast;
+  book.world = world;
+  if (castGone.size) book.castRemoved = [...castGone];
+  if (worldGone.size) book.worldRemoved = [...worldGone];
   if (changed) scheduleMetaSave();
   await shareCast();
   scheduleCast();
@@ -5999,19 +6335,21 @@ function scheduleCastShare() {
   castShareTimer = setTimeout(shareCast, 1000);
 }
 
+// what the parts of a bound book hold in common
+const SHARED_KEYS = ['characters', 'castRemoved', 'world', 'worldRemoved', 'story'];
+
 async function shareCast() {
   clearTimeout(castShareTimer);
   castShareTimer = null;
   if (!book || !castPeers.length) return;
+  castList(); worldList(); storyBible();
   // taken now: the book may close while the parts are being written
-  const cast = JSON.stringify(castList());
-  const removed = JSON.stringify(book.castRemoved || []);
+  const shared = JSON.parse(JSON.stringify(Object.fromEntries(SHARED_KEYS.map((k) => [k, book[k] || (k === 'story' ? {} : [])]))));
   for (const id of [...castPeers]) {
     const m = await window.neo.readBookMeta(id);
     if (!m) continue;
-    if (JSON.stringify(m.characters || []) === cast && JSON.stringify(m.castRemoved || []) === removed) continue;
-    m.characters = JSON.parse(cast);
-    m.castRemoved = JSON.parse(removed);
+    if (SHARED_KEYS.every((k) => JSON.stringify(m[k] || (k === 'story' ? {} : [])) === JSON.stringify(shared[k]))) continue;
+    Object.assign(m, JSON.parse(JSON.stringify(shared)));
     await writeBookMeta(id, m);
   }
 }
@@ -6025,10 +6363,12 @@ async function importCharacters() {
   for (const b of all) {
     const m = await window.neo.readBookMeta(b.id);
     const cast = (m && m.characters) || [];
-    if (cast.length) sources.push({ title: m.title || b.title, cast });
+    const world = (m && m.world) || [];
+    if (cast.length || world.length) sources.push({ title: m.title || b.title, cast, world });
   }
-  if (!sources.length) { toast(t('No other book has characters yet.')); return; }
+  if (!sources.length) { toast(t('No other book has a bible yet.')); return; }
   const have = new Set(castList().map((c) => castFold(charName(c))));
+  const haveW = new Set(worldList().map((w) => (w.type || '') + ':' + castFold(w.name || '')));
   const bd = document.createElement('div');
   bd.className = 'modal-backdrop';
   bd.innerHTML = `
@@ -6041,7 +6381,7 @@ async function importCharacters() {
         <button class="m-ok btn-gold"></button>
       </div>
     </div>`;
-  bd.querySelector('h2').textContent = t('Import characters');
+  bd.querySelector('h2').textContent = t('Import from another book');
   bd.querySelector('.ci-hint').textContent = t('They arrive as copies: changing them here leaves the other book as it is.');
   bd.querySelector('.m-cancel').textContent = t('Cancel');
   bd.querySelector('.m-ok').textContent = t('Import');
@@ -6052,15 +6392,18 @@ async function importCharacters() {
     h.className = 'ci-book';
     h.textContent = src.title;
     list.appendChild(h);
-    for (const c of src.cast) {
+    const items = [
+      ...src.cast.map((c) => ({ c, kind: 'cast', label: charName(c) + ' · ' + (c.role || t('Character')), already: have.has(castFold(charName(c))) })),
+      ...src.world.map((c) => ({ c, kind: 'world', label: (c.name || t('Unnamed')) + ' · ' + worldTypeName(c.type), already: haveW.has((c.type || '') + ':' + castFold(c.name || '')) }))
+    ];
+    for (const { c, kind, label, already } of items) {
       const row = document.createElement('label');
       row.className = 'ci-row';
       const box = document.createElement('input');
       box.type = 'checkbox';
-      const already = have.has(castFold(charName(c)));
       box.disabled = already;
       const name = document.createElement('span');
-      name.textContent = charName(c) + (c.role ? ' · ' + c.role : '');
+      name.textContent = label;
       row.append(box, name);
       if (already) {
         const note = document.createElement('em');
@@ -6068,7 +6411,7 @@ async function importCharacters() {
         row.appendChild(note);
       }
       list.appendChild(row);
-      picks.push({ box, c });
+      picks.push({ box, c, kind });
     }
   }
   document.body.appendChild(bd);
@@ -6082,10 +6425,10 @@ async function importCharacters() {
     const chosen = picks.filter((p) => p.box.checked);
     close();
     if (!chosen.length) return;
-    for (const { c } of chosen) castList().push({ ...JSON.parse(JSON.stringify(c)), id: castId() });
+    for (const { c, kind } of chosen) (kind === 'world' ? worldList() : castList()).push({ ...JSON.parse(JSON.stringify(c)), id: castId() });
     castChanged();
     renderCharacters();
-    toast(t('Characters imported: {n}', { n: fmtNum(chosen.length) }));
+    toast(t('Imported: {n}', { n: fmtNum(chosen.length) }));
   };
 }
 
@@ -6211,7 +6554,7 @@ function chooseCastOption(i) {
     const words = o.name.split(/\s+/);
     const c = addCharacter({ first: words[0], last: words.slice(1).join(' ') });
     text = o.name;
-    toast(t('New character: {name}. Their card is in the Characters tab.', { name: charName(c) }));
+    toast(t('New character: {name}. Their card is in the Story Bible.', { name: charName(c) }));
   } else {
     text = o.form;
   }
@@ -6670,7 +7013,9 @@ function snapshotStructure(label, opts) {
     sectionNotes: JSON.parse(JSON.stringify(book.sectionNotes || {})),
     darlings: JSON.parse(JSON.stringify(darlings)),
     stickies: JSON.parse(JSON.stringify(stickies)),
-    characters: JSON.parse(JSON.stringify(book.characters || []))
+    characters: JSON.parse(JSON.stringify(book.characters || [])),
+    world: JSON.parse(JSON.stringify(book.world || [])),
+    story: JSON.parse(JSON.stringify(book.story || {}))
   });
   if (undoStack.length > 10) undoStack.shift();
 }
@@ -6687,6 +7032,8 @@ async function structuralUndo() {
   darlings = snap.darlings;
   stickies = snap.stickies;
   if (snap.characters) book.characters = snap.characters;
+  if (snap.world) book.world = snap.world;
+  if (snap.story) book.story = snap.story;
   // a rename across the book also rewrote the Notes tab
   if (typeof snap.auxNotes === 'string') await window.neo.writeAux(book.id, 'notes', snap.auxNotes);
   for (const peer of snap.peers || []) {
