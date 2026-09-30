@@ -720,7 +720,7 @@ const galleryOf = (o) => (Array.isArray(o.images) ? o.images : (o.images = []));
 async function bibleImageURL(bookId, fname) {
   const key = bookId + ':' + fname;
   if (bibleImgCache.has(key)) return bibleImgCache.get(key);
-  const r = await window.neo.bibleReadImage(bookId, fname);
+  const r = window.neo.bibleReadImage ? await window.neo.bibleReadImage(bookId, fname) : null; // NEO Pocket has no pictures yet
   const url = r ? `data:${r.mime};base64,${r.base64}` : null;
   if (url) bibleImgCache.set(key, url);
   return url;
