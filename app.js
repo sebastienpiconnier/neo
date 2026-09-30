@@ -2154,6 +2154,7 @@ async function openBook(bookId) {
   currentChapterId = null; // never carry a chapter reference across books
   undoStack = [];
   castPeers = [];
+  castPeek = null;
   chapterHTML = {};
   savedHTML = {};
   diskStamps = {};
@@ -5078,11 +5079,32 @@ function switchTab(name) {
 
 const secLetter = (i) => String.fromCharCode(65 + (i % 26));
 
+// The whole story in a few paragraphs, above the chapter lines: the first
+// thing a planner writes, and shared with a bound book's other parts.
+function outlineSynopsis() {
+  const box = document.createElement('label');
+  box.className = 'ol-synopsis';
+  const span = document.createElement('span');
+  span.textContent = t('Synopsis');
+  const el = document.createElement('textarea');
+  el.rows = 1;
+  el.spellcheck = false;
+  el.placeholder = t('The whole story in a few paragraphs, beginning to end');
+  el.value = storyBible().synopsis || '';
+  el.addEventListener('input', () => growField(el));
+  el.addEventListener('keydown', (e) => e.stopPropagation()); // Enter makes a new line here, not a chapter
+  el.addEventListener('change', () => { storyBible().synopsis = el.value.trim(); castChanged(); });
+  box.append(span, el);
+  requestAnimationFrame(() => growField(el));
+  return box;
+}
+
 function renderOutline(focusTarget) {
   book.sectionNotes = book.sectionNotes || {};
   book.chapterNotes = book.chapterNotes || {};
   const wrap = $('#outline-list');
   wrap.innerHTML = '';
+  wrap.appendChild(outlineSynopsis());
 
   // the story's lines, with each part standing over its chapters (the pages
   // a book carries have nothing to outline)
@@ -5713,12 +5735,92 @@ function renderCast() {
     b.querySelector('.cs-label').textContent = charName(c);
     b.querySelector('.cs-count').textContent = fmtNum(s.n);
     const used = Object.entries(s.forms).map(([f, n]) => `${f} ×${n}`).join(', ');
-    b.title = used + '\n' + t('Click to go to the next mention');
+    b.title = used + '\n' + t('Click to read the card here');
     b.setAttribute('aria-label', `${charName(c)}, ${fmtNum(s.n)}. ${used}`);
-    b.onclick = () => jumpToCharacter(c.id);
+    b.classList.toggle('on', castPeek === c.id);
+    b.setAttribute('aria-pressed', castPeek === c.id ? 'true' : 'false');
+    b.onclick = () => { castPeek = castPeek === c.id ? null : c.id; renderCast(); };
     names.appendChild(b);
   }
   strip.appendChild(names);
+  const peeked = castPeek && cast.find((c) => c.id === castPeek);
+  if (peeked) strip.appendChild(castPeekCard(peeked));
+}
+
+// The card, to read while writing: what the bible holds on this person,
+// filled fields only, and the way to the next mention or the full card.
+let castPeek = null;
+function castPeekCard(c) {
+  const box = document.createElement('div');
+  box.className = 'cast-peek';
+  const head = document.createElement('div');
+  head.className = 'cp-head';
+  if (c.portrait && canBibleImages()) {
+    const img = document.createElement('img');
+    img.className = 'cp-portrait';
+    img.alt = '';
+    loadInto(img, c.portrait);
+    head.appendChild(img);
+  }
+  const who = document.createElement('div');
+  const name = document.createElement('div');
+  name.className = 'cp-name';
+  name.textContent = charName(c);
+  who.appendChild(name);
+  const facts = [c.role, c.gender, c.age].filter((x) => (x || '').trim());
+  const sub = [facts.join(' · '), (c.nicknames || []).join(', ')].filter(Boolean);
+  for (const line of sub) {
+    const d = document.createElement('div');
+    d.className = 'cp-sub';
+    d.textContent = line;
+    who.appendChild(d);
+  }
+  head.appendChild(who);
+  box.appendChild(head);
+  if ((c.note || '').trim()) {
+    const n = document.createElement('div');
+    n.className = 'cp-note';
+    n.textContent = c.note;
+    box.appendChild(n);
+  }
+  for (const [f, label] of CAST_DETAILS.filter(([f]) => !['role', 'gender', 'age'].includes(f))) {
+    const v = (c[f] || '').trim();
+    if (!v) continue;
+    const row = document.createElement('div');
+    row.className = 'cp-field';
+    const l = document.createElement('div');
+    l.className = 'cp-label';
+    l.textContent = t(label);
+    const tx = document.createElement('div');
+    tx.className = 'cp-text';
+    tx.textContent = v;
+    row.append(l, tx);
+    box.appendChild(row);
+  }
+  const acts = document.createElement('div');
+  acts.className = 'cp-actions';
+  const next = document.createElement('button');
+  next.textContent = t('Next mention');
+  next.onclick = () => jumpToCharacter(c.id);
+  const open = document.createElement('button');
+  open.textContent = t('Open in the bible');
+  open.onclick = () => openInBible(c.id);
+  acts.append(next, open);
+  box.appendChild(acts);
+  return box;
+}
+
+function openInBible(id) {
+  bibleFilter = 'all';
+  bibleQuery = '';
+  bibleMore.add(id);
+  switchTab('characters');
+  const card = document.querySelector(`#characters-list [data-id="${id}"]`);
+  if (card) {
+    card.scrollIntoView({ block: 'start', behavior: scrollBehavior() });
+    card.classList.add('flash');
+    setTimeout(() => card.classList.remove('flash'), 1200);
+  }
 }
 
 // the next mention after the caret in the current chapter, round to the top
@@ -5792,20 +5894,22 @@ function castMetaText(s) {
 /*  renames). The story and the world are reference: typed cards to   */
 /*  read and fill, folded until opened.                                */
 
+// The synopsis lives at the top of the Outline now. These older fields show
+// in the bible only while they hold words, so nothing written disappears.
 const STORY_FIELDS = [
-  ['braindump', tk('Braindump'), tk('Ideas, images, scraps: anything, in any order'), true],
-  ['genre', tk('Genre'), tk('Thriller, romantic comedy, YA horror…'), false],
-  ['synopsis', tk('Synopsis'), tk('The whole story in a few paragraphs, beginning to end'), true],
-  ['style', tk('Style'), tk('Voice, tense, point of view, the books it should sound like'), true]
+  ['braindump', tk('Braindump'), '', true],
+  ['genre', tk('Genre'), '', false],
+  ['style', tk('Style'), '', true]
 ];
+const storyShown = () => STORY_FIELDS.filter(([f]) => (storyBible()[f] || '').trim());
 
 // every type of world card: its name, then its fields [key, label, placeholder]
 const WORLD_TYPES = {
-  place: [tk('Place'), [['description', tk('Description'), ''], ['mood', tk('Atmosphere'), tk('Sounds, smells, light')], ['within', tk('Located in'), ''], ['happens', tk('What happens there'), '']]],
-  item: [tk('Item'), [['description', tk('Description'), ''], ['owner', tk('Who owns it'), ''], ['matters', tk('Why it matters'), ''], ['where', tk('Where it is'), '']]],
-  group: [tk('Group'), [['description', tk('Description'), tk('A family, a clan, a company, a crew…')], ['members', tk('Members'), ''], ['goal', tk('Goal'), ''], ['rules', tk('Rules'), '']]],
-  clue: [tk('Clue'), [['description', tk('Description'), ''], ['implications', tk('Implications'), tk('What it reveals, and to whom')], ['appears', tk('Where it appears'), ''], ['knows', tk('Who knows'), '']]],
-  system: [tk('System'), [['principle', tk('How it works'), tk('Magic, technology, society, religion…')], ['rules', tk('Rules'), ''], ['limits', tk('Limits and cost'), '']]],
+  place: [tk('Place'), [['description', tk('Description'), ''], ['mood', tk('Atmosphere'), tk('Sounds, smells, light')], ['happens', tk('What happens there'), '']]],
+  item: [tk('Item'), [['description', tk('Description'), ''], ['owner', tk('Who owns it'), ''], ['matters', tk('Why it matters'), '']]],
+  group: [tk('Group'), [['description', tk('Description'), tk('A family, a clan, a company, a crew…')], ['members', tk('Members'), ''], ['goal', tk('Goal'), '']]],
+  clue: [tk('Clue'), [['description', tk('Description'), ''], ['implications', tk('Implications'), tk('What it reveals, and to whom')], ['knows', tk('Who knows'), '']]],
+  system: [tk('System'), [['principle', tk('How it works'), tk('Magic, technology, society, religion, and its rules')], ['limits', tk('Limits and cost'), '']]],
   event: [tk('Event'), [['when', tk('When'), ''], ['what', tk('What happened'), ''], ['consequences', tk('Consequences'), '']]],
   other: [tk('Other'), [['description', tk('Description'), '']]]
 };
@@ -5863,7 +5967,10 @@ function renderCharacters(focusId) {
   const chips = document.createElement('div');
   chips.className = 'bible-chips';
   chips.setAttribute('role', 'group');
-  for (const [key, label] of [['all', tk('All')], ['story', tk('The story')], ['cast', tk('Characters')], ['world', tk('World')]]) {
+  const chipList = [['all', tk('All')], ['story', tk('The story')], ['cast', tk('Characters')], ['world', tk('World')]]
+    .filter(([key]) => key !== 'story' || storyShown().length);
+  if (bibleFilter === 'story' && !storyShown().length) bibleFilter = 'all';
+  for (const [key, label] of chipList) {
     const b = document.createElement('button');
     b.className = 'bible-chip' + (bibleFilter === key ? ' on' : '');
     b.textContent = t(label);
@@ -5888,7 +5995,7 @@ function renderCharacters(focusId) {
   const sc = document.createElement('div');
   sc.className = 'story-card';
   const sb = storyBible();
-  for (const [f, label, ph, long] of STORY_FIELDS) {
+  for (const [f, label, ph, long] of storyShown()) {
     const field = document.createElement('label');
     field.className = 'cc-field';
     const span = document.createElement('span');
@@ -5903,7 +6010,7 @@ function renderCharacters(focusId) {
     sc.appendChild(field);
   }
   story.appendChild(sc);
-  wrap.appendChild(story);
+  if (storyShown().length) wrap.appendChild(story);
 
   // the characters
   const castSec = bibleSection('cast', t('Characters'));
@@ -6133,7 +6240,29 @@ const canBibleImages = () => !!(window.neo && window.neo.bibleSetImage);
 
 // cards made before galleries had one "image": a character's becomes its
 // portrait, a world card's the first of its pictures
+// fields the lighter cards dropped: their words move, labelled, into a field
+// that stayed, so nothing written is ever lost
+const MERGED_FIELDS = [
+  // [from, to, label] ; a character's looks, manner and past become its written portrait
+  ['looks', 'sketch', null], ['traits', 'sketch', null], ['past', 'sketch', null],
+  ['within', 'notes', tk('Located in')], ['where', 'notes', tk('Where it is')],
+  ['rules', 'notes', tk('Rules')], ['appears', 'notes', tk('Where it appears')]
+];
+function mergeOldFields(o) {
+  for (const [from, to, label] of MERGED_FIELDS) {
+    const v = (o[from] || '').trim();
+    if (from in o) delete o[from];
+    if (!v) continue;
+    // a system's rules sit best beside how it works
+    const into = from === 'rules' && o.type === 'system' ? 'principle' : to;
+    const line = label ? (frenchTypography() ? t(label) + ' : ' : t(label) + ': ') + v : v;
+    o[into] = [(o[into] || '').trim(), line].filter(Boolean).join('\n\n');
+  }
+  return o;
+}
+
 function migratePictures(o) {
+  if (o) mergeOldFields(o);
   if (!o || !o.image) return o;
   if (o.type) o.images = [o.image, ...(o.images || []).filter((f) => f !== o.image)];
   else if (!o.portrait) o.portrait = o.image;
@@ -6408,12 +6537,10 @@ const CAST_DETAILS = [
   ['role', tk('Role'), tk('Protagonist, antagonist, secondary…'), false],
   ['gender', tk('Gender'), '', false],
   ['age', tk('Age'), '', false],
-  ['looks', tk('Appearance'), tk('Face, build, clothes, the detail you notice first'), true],
-  ['traits', tk('Personality'), tk('Traits, habits, the way they talk'), true],
+  ['sketch', tk('Written portrait'), tk('Looks, manner, past: what makes them who they are'), true],
   ['want', tk('Want'), tk('What they chase'), true],
   ['need', tk('Need'), tk('What they truly need'), true],
   ['flaw', tk('Flaw'), tk('What holds them back'), true],
-  ['past', tk('Backstory'), '', true],
   ['ties', tk('Relationships'), tk('Sister of…, rival of…'), true],
   ['notes', tk('Notes'), tk('Anything else'), true]
 ];
