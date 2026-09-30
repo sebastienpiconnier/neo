@@ -469,14 +469,14 @@ ipcMain.handle('cover:read', (_e, bookId, fname) => {
 const BIBLE_IMG = /^img-\d+-[a-z0-9]+\.(jpg|png)$/;
 const bibleDir = (bookId) => path.join(bookDir(bookId), 'bible');
 
-ipcMain.handle('bible:pickImage', async () => {
+ipcMain.handle('bible:pickImage', async (_e, several) => {
   const win = BrowserWindow.getFocusedWindow();
   const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-    title: t('Choose a picture'),
-    properties: ['openFile'],
+    title: several ? t('Choose pictures') : t('Choose a picture'),
+    properties: several ? ['openFile', 'multiSelections'] : ['openFile'],
     filters: [{ name: t('Images'), extensions: COVER_EXTS }]
   });
-  return canceled || !filePaths.length ? null : filePaths[0];
+  return canceled || !filePaths.length ? null : filePaths;
 });
 
 ipcMain.handle('bible:setImage', (_e, bookId, srcPath) => {

@@ -30,7 +30,7 @@ contextBridge.exposeInMainWorld('neo', {
   setCover: (bookId, srcPath) => ipcRenderer.invoke('cover:set', bookId, srcPath),
   removeCover: (bookId) => ipcRenderer.invoke('cover:remove', bookId),
   readCover: (bookId, fname) => ipcRenderer.invoke('cover:read', bookId, fname),
-  biblePickImage: () => ipcRenderer.invoke('bible:pickImage'),
+  biblePickImage: (several) => ipcRenderer.invoke('bible:pickImage', several),
   bibleSetImage: (bookId, srcPath) => ipcRenderer.invoke('bible:setImage', bookId, srcPath),
   bibleReadImage: (bookId, fname) => ipcRenderer.invoke('bible:readImage', bookId, fname),
   bibleCopyImage: (fromBookId, fname, toBookId) => ipcRenderer.invoke('bible:copyImage', fromBookId, fname, toBookId),

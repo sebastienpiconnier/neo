@@ -5572,6 +5572,7 @@ const castKey = (s) => (s || '').replace(/[’‘]/g, "'");
 function castList() {
   if (!book) return [];
   if (!Array.isArray(book.characters)) book.characters = [];
+  book.characters.forEach(migratePictures);
   return book.characters;
 }
 
@@ -5787,6 +5788,7 @@ const bibleOpen = new Set(); // world cards unfolded this session
 function worldList() {
   if (!book) return [];
   if (!Array.isArray(book.world)) book.world = [];
+  book.world.forEach(migratePictures);
   return book.world;
 }
 function storyBible() {
@@ -6000,9 +6002,7 @@ function worldCard(w) {
   name.setAttribute('aria-label', t('Name'));
   name.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); name.blur(); } });
   name.addEventListener('change', () => { w.name = name.value.trim(); castChanged(); });
-  const thumb = bibleThumb(w);
-  if (thumb) card.querySelector('.wc-head').insertBefore(thumb, card.querySelector('.wc-type'));
-  wirePictureDrop(card, w);
+  wirePictureDrop(card, w, 'gallery');
   const type = card.querySelector('.wc-type');
   type.setAttribute('aria-label', t('Type'));
   for (const k of Object.keys(WORLD_TYPES)) {
@@ -6045,6 +6045,8 @@ function worldCard(w) {
     del.className = 'cc-del';
     del.textContent = t('Delete');
     del.onclick = () => deleteWorld(w);
+    const gallery = galleryRow(w);
+    if (gallery) body.appendChild(gallery);
     const btns = document.createElement('span');
     btns.className = 'cc-buttons';
     const pic = pictureButton(w);
@@ -6077,13 +6079,25 @@ function deleteWorld(w) {
   toast(t('{name} left the bible, {key} to undo', { name: w.name || worldTypeName(w.type), key: KZ }));
 }
 
-/* --- One picture per card ---------------------------------------- */
-/*  A portrait, a photo of the place, a map: dropped on the card or    */
-/*  picked with "Picture…". NEO copies it into the book's bible/       */
-/*  folder, so the book travels whole.                                 */
+/* --- Pictures: a portrait for a character, a gallery for any card -- */
+/*  Dropped from the Finder on a card, or picked from a dialog. NEO    */
+/*  copies each into the book's own bible/ folder (the book travels    */
+/*  whole). A character's portrait sits in a circle at the top; the    */
+/*  gallery runs along the bottom of every card.                       */
 
 const bibleImgCache = new Map();
 const canBibleImages = () => !!(window.neo && window.neo.bibleSetImage);
+
+// cards made before galleries had one "image": a character's becomes its
+// portrait, a world card's the first of its pictures
+function migratePictures(o) {
+  if (!o || !o.image) return o;
+  if (o.type) o.images = [o.image, ...(o.images || []).filter((f) => f !== o.image)];
+  else if (!o.portrait) o.portrait = o.image;
+  delete o.image;
+  return o;
+}
+const galleryOf = (o) => (Array.isArray(o.images) ? o.images : (o.images = []));
 
 async function bibleImageURL(bookId, fname) {
   const key = bookId + ':' + fname;
@@ -6093,115 +6107,192 @@ async function bibleImageURL(bookId, fname) {
   if (url) bibleImgCache.set(key, url);
   return url;
 }
+function loadInto(img, fname, holder) {
+  const opened = book;
+  bibleImageURL(book.id, fname).then((url) => {
+    if (book !== opened) return;
+    if (url) img.src = url; else if (holder) holder.classList.add('missing');
+  });
+}
 
 const bibleCardName = (o) => (o.type ? (o.name || worldTypeName(o.type)) : charName(o));
 
-function bibleThumb(o) {
-  if (!o.image || !canBibleImages()) return null;
+// a character's portrait: a circle, or a quiet silhouette waiting for one
+function portraitCircle(c) {
+  if (!canBibleImages()) return null;
   const b = document.createElement('button');
-  b.className = 'bible-img';
-  b.setAttribute('aria-label', t('Picture of {name}', { name: bibleCardName(o) }));
-  b.title = t('Click to enlarge · right-click to replace or remove');
-  const img = document.createElement('img');
-  img.alt = '';
-  b.appendChild(img);
-  const opened = book;
-  bibleImageURL(book.id, o.image).then((url) => {
-    if (book !== opened) return;
-    if (url) img.src = url; else b.classList.add('missing');
-  });
-  b.onclick = () => showBibleImage(o);
+  b.className = 'bible-portrait' + (c.portrait ? '' : ' empty');
+  if (c.portrait) {
+    const img = document.createElement('img');
+    img.alt = '';
+    b.appendChild(img);
+    loadInto(img, c.portrait, b);
+    b.setAttribute('aria-label', t('Portrait of {name}', { name: charName(c) }));
+    b.title = t('Click to enlarge · right-click to replace or remove');
+    b.onclick = () => showBibleImage(c, [c.portrait], 0);
+  } else {
+    b.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="15" r="7"/><path d="M6 36c1.5-8 7-12 14-12s12.5 4 14 12"/></svg>';
+    b.setAttribute('aria-label', t('Add a portrait'));
+    b.title = t('Add a portrait (or drop a picture here)');
+    b.onclick = () => pickBibleImages(c, 'portrait');
+  }
   b.addEventListener('contextmenu', async (e) => {
+    if (!c.portrait) return;
     e.preventDefault();
     const choice = await popMenu(e.clientX, e.clientY, [
-      { label: t('Replace picture…'), value: 'replace' },
-      { label: t('Remove picture'), value: 'remove', danger: true }
-    ], { title: bibleCardName(o), from: b });
-    if (choice === 'replace') pickBibleImage(o);
-    if (choice === 'remove') removeBibleImage(o);
+      { label: t('Replace portrait…'), value: 'replace' },
+      { label: t('Remove portrait'), value: 'remove', danger: true }
+    ], { title: charName(c), from: b });
+    if (choice === 'replace') pickBibleImages(c, 'portrait');
+    if (choice === 'remove') removeBibleImage(c, c.portrait);
   });
+  wirePictureDrop(b, c, 'portrait');
   return b;
+}
+
+// the pictures along the bottom of a card, and a tile to add more
+function galleryRow(o) {
+  if (!canBibleImages()) return null;
+  const list = galleryOf(o);
+  const row = document.createElement('div');
+  row.className = 'bible-gallery';
+  list.forEach((f, i) => {
+    const b = document.createElement('button');
+    b.className = 'bg-thumb';
+    b.setAttribute('aria-label', t('Picture {n} of {name}', { n: i + 1, name: bibleCardName(o) }));
+    b.title = t('Click to enlarge · right-click for more');
+    const img = document.createElement('img');
+    img.alt = '';
+    b.appendChild(img);
+    loadInto(img, f, b);
+    b.onclick = () => showBibleImage(o, list, i);
+    b.addEventListener('contextmenu', async (e) => {
+      e.preventDefault();
+      const items = [];
+      if (!o.type) items.push({ label: t('Use as portrait'), value: 'portrait' });
+      if (i > 0) items.push({ label: t('Move to the front'), value: 'front' });
+      items.push({ label: t('Remove picture'), value: 'remove', danger: true });
+      const choice = await popMenu(e.clientX, e.clientY, items, { title: bibleCardName(o), from: b });
+      if (choice === 'portrait') { o.portrait = f; castChanged(); renderCharacters(); }
+      if (choice === 'front') { list.splice(i, 1); list.unshift(f); castChanged(); renderCharacters(); }
+      if (choice === 'remove') removeBibleImage(o, f);
+    });
+    row.appendChild(b);
+  });
+  const add = document.createElement('button');
+  add.className = 'bg-add';
+  add.textContent = '+';
+  add.setAttribute('aria-label', t('Add pictures…'));
+  add.title = t('Add pictures (or drop them on the card)');
+  add.onclick = () => pickBibleImages(o, 'gallery');
+  row.appendChild(add);
+  row.hidden = !list.length; // an empty card offers "Add pictures…" below instead
+  return row;
 }
 
 function pictureButton(o) {
-  if (!canBibleImages()) return null;
+  if (!canBibleImages() || galleryOf(o).length) return null;
   const b = document.createElement('button');
   b.className = 'cc-more cc-pic';
-  b.textContent = o.image ? t('Replace picture…') : t('Picture…');
-  b.onclick = () => pickBibleImage(o);
+  b.textContent = t('Add pictures…');
+  b.onclick = () => pickBibleImages(o, 'gallery');
   return b;
 }
 
-// a file from the Finder dropped anywhere on the card
-function wirePictureDrop(card, o) {
+// files from the Finder: on the portrait circle they become the portrait,
+// anywhere else on the card they join the gallery
+function wirePictureDrop(el, o, where) {
   if (!canBibleImages()) return;
   const isFile = (e) => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
-  card.addEventListener('dragover', (e) => {
+  const glow = el.classList.contains('bible-portrait') ? el : el;
+  el.addEventListener('dragover', (e) => {
     if (!isFile(e)) return;
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
-    card.classList.add('img-over');
+    glow.classList.add('img-over');
   });
-  card.addEventListener('dragleave', (e) => { if (!card.contains(e.relatedTarget)) card.classList.remove('img-over'); });
-  card.addEventListener('drop', (e) => {
+  el.addEventListener('dragleave', (e) => { if (!el.contains(e.relatedTarget)) glow.classList.remove('img-over'); });
+  el.addEventListener('drop', (e) => {
     if (!isFile(e)) return;
     e.preventDefault();
     e.stopPropagation();
-    card.classList.remove('img-over');
-    let p = null;
-    try { p = window.neo.pathForFile(e.dataTransfer.files[0]); } catch { /* no path */ }
-    if (p) setBibleImage(o, p);
+    glow.classList.remove('img-over');
+    const paths = [...e.dataTransfer.files].map((f) => { try { return window.neo.pathForFile(f); } catch { return null; } }).filter(Boolean);
+    if (paths.length) addBibleImages(o, paths, where);
   });
 }
 
-async function setBibleImage(o, srcPath) {
+async function addBibleImages(o, paths, where) {
   const opened = book;
-  const fname = await window.neo.bibleSetImage(book.id, srcPath);
-  if (book !== opened) return;
-  if (!fname) { toast(t('NEO couldn’t read that picture. PNG, JPEG or WebP work.')); return; }
-  o.image = fname;
+  const done = [];
+  for (const p of where === 'portrait' ? paths.slice(0, 1) : paths) {
+    const fname = await window.neo.bibleSetImage(book.id, p);
+    if (book !== opened) return;
+    if (fname) done.push(fname);
+  }
+  if (!done.length) { toast(t('NEO couldn’t read that picture. PNG, JPEG or WebP work.')); return; }
+  if (where === 'portrait') o.portrait = done[0];
+  else galleryOf(o).push(...done);
   castChanged();
   renderCharacters();
 }
 
-async function pickBibleImage(o) {
-  const p = await window.neo.biblePickImage();
-  if (p) setBibleImage(o, p);
+async function pickBibleImages(o, where) {
+  const picked = await window.neo.biblePickImage(where !== 'portrait');
+  const paths = Array.isArray(picked) ? picked : picked ? [picked] : [];
+  if (paths.length) addBibleImages(o, paths, where);
 }
 
-function removeBibleImage(o) {
+function removeBibleImage(o, fname) {
   snapshotStructure(t('Remove picture'));
-  delete o.image;
+  if (o.portrait === fname) delete o.portrait;
+  else o.images = galleryOf(o).filter((f) => f !== fname);
   castChanged();
   renderCharacters();
   toast(t('Picture removed, {key} to undo', { key: KZ }));
 }
 
-function showBibleImage(o) {
-  if (!o.image) return;
+// large, one at a time; ← → walk the gallery, Esc or a click closes
+function showBibleImage(o, list, start) {
+  if (!list.length) return;
+  let i = start;
   const back = document.activeElement;
   const box = document.createElement('div');
   box.className = 'bible-lightbox';
   box.setAttribute('role', 'dialog');
-  box.setAttribute('aria-label', t('Picture of {name}', { name: bibleCardName(o) }));
+  box.setAttribute('aria-label', bibleCardName(o));
   box.tabIndex = -1;
   const img = document.createElement('img');
-  img.alt = bibleCardName(o);
   const cap = document.createElement('div');
   cap.className = 'bl-caption';
-  cap.textContent = bibleCardName(o);
   box.append(img, cap);
-  bibleImageURL(book.id, o.image).then((url) => { if (url) img.src = url; });
+  const show = () => {
+    img.alt = bibleCardName(o);
+    img.removeAttribute('src');
+    bibleImageURL(book.id, list[i]).then((url) => { if (url) img.src = url; });
+    cap.textContent = bibleCardName(o) + (list.length > 1 ? `  ·  ${i + 1} / ${list.length}` : '');
+  };
   const close = () => { box.remove(); if (back && back.isConnected) back.focus({ preventScroll: true }); };
   box.onclick = close;
-  box.addEventListener('keydown', (e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); close(); } });
+  box.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      e.stopPropagation();
+      i = (i + (e.key === 'ArrowRight' ? 1 : list.length - 1)) % list.length;
+      show();
+      return;
+    }
+    if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); close(); }
+  });
+  show();
   document.body.appendChild(box);
   box.focus();
 }
 
-// every picture the bible uses
-const bibleImages = (m) => [...(m.characters || []), ...(m.world || [])].map((x) => x.image).filter(Boolean);
+// every picture the bible uses (the old single "image" too, until migrated)
+const bibleImages = (m) => [...(m.characters || []), ...(m.world || [])]
+  .flatMap((x) => [x.portrait, x.image, ...(Array.isArray(x.images) ? x.images : [])]).filter(Boolean);
 
 async function pruneBibleImages() {
   if (!book || !canBibleImages() || !window.neo.biblePruneImages) return;
@@ -6257,6 +6348,7 @@ function wireReorder(list, getArr) {
 // the fuller card, folded away: [field, label, placeholder, long]
 const CAST_DETAILS = [
   ['role', tk('Role'), tk('Protagonist, antagonist, secondary…'), false],
+  ['gender', tk('Gender'), '', false],
   ['age', tk('Age'), '', false],
   ['looks', tk('Appearance'), tk('Face, build, clothes, the detail you notice first'), true],
   ['traits', tk('Personality'), tk('Traits, habits, the way they talk'), true],
@@ -6294,7 +6386,7 @@ function characterCard(c, s) {
   details.appendChild(pair);
   for (const [f, label, ph, long] of CAST_DETAILS) {
     const field = document.createElement('label');
-    field.className = 'cc-field cc-detail' + (f === 'age' ? ' cc-age' : '');
+    field.className = 'cc-field cc-detail' + (f === 'age' || f === 'gender' ? ' cc-age' : '');
     field.dataset.f = f;
     const span = document.createElement('span');
     span.textContent = t(label);
@@ -6304,7 +6396,7 @@ function characterCard(c, s) {
     if (long) el.rows = 1;
     if (ph) el.placeholder = t(ph);
     field.append(span, el);
-    (f === 'role' || f === 'age' ? pair : details).appendChild(field);
+    (f === 'role' || f === 'age' || f === 'gender' ? pair : details).appendChild(field);
   }
   const more = card.querySelector('.cc-more');
   const showDetails = (all) => {
@@ -6314,7 +6406,7 @@ function characterCard(c, s) {
     card.querySelectorAll('.cc-detail').forEach((fd) => {
       fd.hidden = !all && !(c[fd.dataset.f] || '').trim();
     });
-    pair.hidden = !all && !(c.role || c.age);
+    pair.hidden = !all && !(c.role || c.age || c.gender);
     card.querySelectorAll('textarea').forEach(growField);
   };
   more.onclick = () => {
@@ -6326,11 +6418,13 @@ function characterCard(c, s) {
   const del = card.querySelector('.cc-del');
   del.textContent = t('Delete');
   del.onclick = () => deleteCharacter(c);
-  const thumb = bibleThumb(c);
-  if (thumb) card.insertBefore(thumb, card.querySelector('.cc-row'));
+  const portrait = portraitCircle(c);
+  if (portrait) card.insertBefore(portrait, card.querySelector('.cc-row'));
+  const gallery = galleryRow(c);
+  if (gallery) card.insertBefore(gallery, card.querySelector('.cc-meta'));
   const pic = pictureButton(c);
   if (pic) card.querySelector('.cc-buttons').insertBefore(pic, more);
-  wirePictureDrop(card, c);
+  wirePictureDrop(card, c, 'gallery');
   card.querySelectorAll('input, textarea').forEach((input) => {
     const f = input.dataset.f;
     const shown = () => (f === 'nicknames' ? (c.nicknames || []).join(', ') : (c[f] || ''));
@@ -6739,8 +6833,10 @@ async function importCharacters() {
     close();
     if (!chosen.length) return;
     for (const { c, kind, from } of chosen) {
-      const copy = { ...JSON.parse(JSON.stringify(c)), id: castId() };
-      if (copy.image && !(canBibleImages() && await window.neo.bibleCopyImage(from, copy.image, book.id))) delete copy.image;
+      const copy = migratePictures({ ...JSON.parse(JSON.stringify(c)), id: castId() });
+      const brings = async (f) => canBibleImages() && await window.neo.bibleCopyImage(from, f, book.id);
+      if (copy.portrait && !(await brings(copy.portrait))) delete copy.portrait;
+      if (copy.images) { const kept = []; for (const f of copy.images) if (await brings(f)) kept.push(f); copy.images = kept; }
       (kind === 'world' ? worldList() : castList()).push(copy);
     }
     castChanged();

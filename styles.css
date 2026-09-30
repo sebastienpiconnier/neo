@@ -1673,3 +1673,33 @@ body.light .bible-lightbox { background: rgba(60, 55, 45, 0.82); }
 .cast-card .cc-field, .cast-card .cc-row { display: flow-root; }
 .cast-card .cc-row { display: flex; }
 .cast-card .cc-row .cc-field { min-width: 0; }
+
+/* --- Portraits and galleries (replace the single thumbnail) --- */
+.bible-portrait {
+  float: right; width: 72px; height: 72px; margin: 2px 0 8px 16px; padding: 0;
+  border-radius: 50%; overflow: hidden; border: 1px solid #e3ddcf; background: #f1ede4;
+  cursor: zoom-in; display: flex; align-items: center; justify-content: center;
+}
+.bible-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bible-portrait.empty { border-style: dashed; cursor: pointer; background: none; }
+.bible-portrait.empty svg { width: 34px; height: 34px; fill: none; stroke: #c7c0b0; stroke-width: 1.6; }
+.bible-portrait:hover, .bible-portrait:focus-visible { border-color: var(--accent); }
+.bible-portrait.empty:hover svg { stroke: var(--accent); }
+.bible-portrait.img-over { outline: 2px dashed var(--accent); outline-offset: 3px; }
+.bible-gallery { clear: both; display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
+.bg-thumb {
+  width: 76px; height: 76px; padding: 0; border: 1px solid #e3ddcf; border-radius: 4px;
+  overflow: hidden; background: #f1ede4; cursor: zoom-in;
+}
+.bg-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bg-thumb:hover, .bg-thumb:focus-visible { border-color: var(--accent); }
+.bg-add {
+  width: 76px; height: 76px; border: 1px dashed #d8d2c2; border-radius: 4px; background: none;
+  color: #b9b4a8; font-size: 26px; font-weight: 300;
+}
+.bg-add:hover { color: var(--accent); border-color: var(--accent); }
+.cast-card .cc-meta { clear: both; }
+body.night .bible-portrait, body.night .bg-thumb { border-color: #3a3835; background: #2a2926; }
+body.night .bible-portrait.empty { background: none; border-color: #4a4742; }
+body.night .bible-portrait.empty svg { stroke: #5a5650; }
+body.night .bg-add { border-color: #4a4742; color: #6a655c; }
