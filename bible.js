@@ -1,6 +1,6 @@
-// NEO: the Story Bible (characters, the world, pictures) and what it
-// adds to the page (@ while writing, who is in this chapter, renames that
-// reach the text). Kept apart from app.js so the two can change without
+// NEO: the story's cards (characters, the world, pictures), kept under the
+// Notes, and what they add to the page (/ in the notes, @ while writing,
+// who is in this chapter, renames that reach the text). Kept apart from app.js so the two can change without
 // stepping on each other; it loads after app.js and shares its globals
 // ($, t, tk, book, library, the save and undo machinery).
 
@@ -248,26 +248,32 @@ function castPeekCard(c) {
   next.textContent = t('Next mention');
   next.onclick = () => jumpToCharacter(c.id);
   const open = document.createElement('button');
-  open.textContent = t('Open in the bible');
-  open.onclick = () => openInBible(c.id);
-  acts.append(next);
-  if (bibleShown()) acts.append(open); // the full card lives in a tab a pantser may not show
+  open.textContent = openInNotesLabel();
+  open.onclick = () => openInNotes(c.id);
+  acts.append(next, open);
   box.appendChild(acts);
   return box;
 }
 
-function openInBible(id) {
-  bibleFilter = 'all';
-  bibleQuery = '';
+// the card, open in full, under the notes (which arrive from disk: the
+// card is shown once they are in)
+let notesFocus = null;
+function openInNotes(id) {
   bibleMore.add(id);
-  switchTab('characters');
-  const card = document.querySelector(`#characters-list [data-id="${id}"]`);
-  if (card) {
-    card.scrollIntoView({ block: 'start', behavior: scrollBehavior() });
-    card.classList.add('flash');
-    setTimeout(() => card.classList.remove('flash'), 1200);
-  }
+  bibleOpen.add(id);
+  notesFocus = id;
+  if (currentTab === 'notes') { renderCharacters(); showNotesFocus(); } else switchTab('notes');
 }
+function showNotesFocus() {
+  const id = notesFocus;
+  notesFocus = null;
+  const card = id && document.querySelector(`#characters-list [data-id="${id}"]`);
+  if (!card) return;
+  card.scrollIntoView({ block: 'start', behavior: scrollBehavior() });
+  card.classList.add('flash');
+  setTimeout(() => card.classList.remove('flash'), 1200);
+}
+const openInNotesLabel = () => t('Open in {tab}', { tab: tabName('notes') });
 
 // the next mention after the caret in the current chapter, round to the top
 function jumpToCharacter(id) {
@@ -335,13 +341,13 @@ function castMetaText(s) {
   ].join(' · ');
 }
 
-/* --- The Story Bible tab: the story, the characters, the world ---- */
+/* --- The cards, under the notes: characters, then the world ------- */
 /*  Only characters are recognized in the text (@, the chapter pane,  */
-/*  renames). The story and the world are reference: typed cards to   */
-/*  read and fill, folded until opened.                                */
+/*  renames). The world is reference: typed cards to read and fill,   */
+/*  folded until opened. / in the notes makes a card.                  */
 
 // The synopsis lives at the top of the Outline now. These older fields show
-// in the bible only while they hold words, so nothing written disappears.
+// under the notes only while they hold words, so nothing written disappears.
 const STORY_FIELDS = [
   ['braindump', tk('Braindump'), '', true],
   ['genre', tk('Genre'), '', false],
@@ -360,9 +366,7 @@ const WORLD_TYPES = {
   other: [tk('Other'), [['description', tk('Description'), '']]]
 };
 
-let bibleFilter = 'all';
 const bibleMore = new Set(); // cards showing all their details (gallery, counts, empty fields)
-let bibleQuery = '';
 const bibleOpen = new Set(); // world cards unfolded this session
 
 function worldList() {
@@ -378,11 +382,6 @@ function storyBible() {
 }
 const worldTypeName = (type) => t((WORLD_TYPES[type] || WORLD_TYPES.other)[0]);
 
-// the words a card holds, for the search box
-function cardText(o) {
-  return castFold(Object.values(o).filter((v) => typeof v === 'string' || Array.isArray(v)).flat().join(' '));
-}
-
 function bibleSection(key, title) {
   const sec = document.createElement('section');
   sec.className = 'bible-section';
@@ -394,165 +393,121 @@ function bibleSection(key, title) {
   return sec;
 }
 
+// The rubrics, in the order they stand under the notes. A rubric shows
+// once it holds a card; / in the notes makes the first one.
+const RUBRICS = [
+  ['cast', tk('Characters'), tk('Character')],
+  ['place', tk('Places')], ['item', tk('Items')], ['group', tk('Groups')], ['clue', tk('Clues')],
+  ['system', tk('Systems')], ['event', tk('Events')], ['other', tk('Miscellaneous')]
+];
+const rubricCards = (key) => (key === 'cast' ? castList()
+  : worldList().filter((w) => (WORLD_TYPES[w.type] ? w.type : 'other') === key));
+
 function renderCharacters(focusId) {
   const wrap = $('#characters-list');
   const scroller = $('#paper-scroll');
   const keep = scroller.scrollTop;
   wrap.innerHTML = '';
+  const cast = castList();
+  const world = worldList();
+
+  if (!cast.length && !world.length && !storyShown().length) {
+    const hint = document.createElement('div');
+    hint.className = 'notes-hint';
+    hint.textContent = t('Type / for a character, a place, a picture, a heading…');
+    wrap.append(hint, importButton());
+    renderNotesToc();
+    return;
+  }
 
   if (castPeers.length) {
     const shared = document.createElement('div');
     shared.className = 'cast-shared';
-    shared.textContent = t('Shared by every part of this bound book.');
+    shared.textContent = t('These cards are shared by every part of this bound book.');
     wrap.appendChild(shared);
   }
 
-  // filters and search
-  const bar = document.createElement('div');
-  bar.className = 'bible-bar';
-  const chips = document.createElement('div');
-  chips.className = 'bible-chips';
-  chips.setAttribute('role', 'group');
-  const chipList = [['all', tk('All')], ['story', tk('The story')], ['cast', tk('Characters')], ['world', tk('World')]]
-    .filter(([key]) => key !== 'story' || storyShown().length);
-  if (bibleFilter === 'story' && !storyShown().length) bibleFilter = 'all';
-  for (const [key, label] of chipList) {
-    const b = document.createElement('button');
-    b.className = 'bible-chip' + (bibleFilter === key ? ' on' : '');
-    b.textContent = t(label);
-    b.setAttribute('aria-pressed', bibleFilter === key ? 'true' : 'false');
-    b.onclick = () => { bibleFilter = key; renderCharacters(); };
-    chips.appendChild(b);
+  // the older story fields, while they hold words
+  if (storyShown().length) {
+    const story = bibleSection('story', t('The story'));
+    const sc = document.createElement('div');
+    sc.className = 'story-card';
+    const sb = storyBible();
+    for (const [f, label, ph, long] of storyShown()) {
+      const field = document.createElement('label');
+      field.className = 'cc-field';
+      const span = document.createElement('span');
+      span.textContent = t(label);
+      const el = document.createElement(long ? 'textarea' : 'input');
+      el.spellcheck = false;
+      el.placeholder = t(ph);
+      if (long) { el.rows = 1; el.addEventListener('input', () => growField(el)); }
+      el.value = sb[f] || '';
+      el.addEventListener('change', () => { storyBible()[f] = el.value.trim(); el.value = storyBible()[f]; castChanged(); });
+      field.append(span, el);
+      sc.appendChild(field);
+    }
+    story.appendChild(sc);
+    wrap.appendChild(story);
   }
-  const search = document.createElement('input');
-  search.className = 'bible-search';
-  search.type = 'search';
-  search.spellcheck = false;
-  search.placeholder = t('Search the bible');
-  search.setAttribute('aria-label', t('Search the bible'));
-  search.value = bibleQuery;
-  search.addEventListener('input', () => { bibleQuery = search.value; applyBibleSearch(); });
-  search.addEventListener('keydown', (e) => { if (e.key === 'Escape' && search.value) { e.preventDefault(); e.stopPropagation(); search.value = ''; bibleQuery = ''; applyBibleSearch(); } });
-  bar.append(chips, search);
-  wrap.appendChild(bar);
 
-  // the story
-  const story = bibleSection('story', t('The story'));
-  const sc = document.createElement('div');
-  sc.className = 'story-card';
-  const sb = storyBible();
-  for (const [f, label, ph, long] of storyShown()) {
-    const field = document.createElement('label');
-    field.className = 'cc-field';
-    const span = document.createElement('span');
-    span.textContent = t(label);
-    const el = document.createElement(long ? 'textarea' : 'input');
-    el.spellcheck = false;
-    el.placeholder = t(ph);
-    if (long) { el.rows = 1; el.addEventListener('input', () => growField(el)); }
-    el.value = sb[f] || '';
-    el.addEventListener('change', () => { storyBible()[f] = el.value.trim(); el.value = storyBible()[f]; castChanged(); });
-    field.append(span, el);
-    sc.appendChild(field);
+  const stats = cast.length ? bookCastStats() : new Map();
+  for (const [key, title] of RUBRICS) {
+    const items = rubricCards(key);
+    if (!items.length) continue;
+    const sec = bibleSection(key, t(title));
+    const add = document.createElement('button');
+    add.className = 'rubric-add';
+    add.textContent = '+';
+    const what = key === 'cast' ? t('Character') : worldTypeName(key);
+    add.title = t('New card: {type}', { type: what });
+    add.setAttribute('aria-label', add.title);
+    add.onclick = () => (key === 'cast' ? addCharacter() : addWorld(key));
+    sec.querySelector('.bible-h').appendChild(add);
+    const list = document.createElement('div');
+    list.className = 'bible-cards';
+    for (const o of items) list.appendChild(key === 'cast' ? characterCard(o, stats.get(o.id)) : worldCard(o));
+    sec.appendChild(list);
+    // a world rubric holds one type: reordering moves the card among its own kind
+    wireReorder(list, key === 'cast' ? castList : () => worldReorderView(key));
+    wrap.appendChild(sec);
   }
-  story.appendChild(sc);
-  if (storyShown().length) wrap.appendChild(story);
 
-  // the characters
-  const castSec = bibleSection('cast', t('Characters'));
-  const cast = castList();
-  const stats = bookCastStats();
-  if (!cast.length) {
-    const empty = document.createElement('div');
-    empty.className = 'cast-empty';
-    empty.textContent = t('No characters yet.');
-    const more = document.createElement('div');
-    more.textContent = t('Add one here, or type @ and a name while you write.');
-    empty.appendChild(more);
-    castSec.appendChild(empty);
-  }
-  const castList_ = document.createElement('div');
-  castList_.className = 'bible-cards';
-  for (const c of cast) castList_.appendChild(characterCard(c, stats.get(c.id)));
-  castSec.appendChild(castList_);
-  wireReorder(castList_, castList);
-  const add = document.createElement('button');
-  add.className = 'cast-add';
-  add.textContent = '+ ' + t('New character');
-  add.onclick = () => addCharacter();
-  const imp = document.createElement('button');
-  imp.className = 'cast-import-btn';
-  imp.textContent = t('Import from another book…');
-  imp.onclick = () => importCharacters();
-  const actions = document.createElement('div');
-  actions.className = 'cast-actions';
-  actions.append(add, imp);
-  castSec.appendChild(actions);
-  wrap.appendChild(castSec);
+  wrap.appendChild(importButton());
 
-  // the world
-  const worldSec = bibleSection('world', t('World'));
-  const world = worldList();
-  if (!world.length) {
-    const empty = document.createElement('div');
-    empty.className = 'cast-empty';
-    empty.textContent = t('Places, items, groups, clues, the rules of your world.');
-    worldSec.appendChild(empty);
-  }
-  const worldCards = document.createElement('div');
-  worldCards.className = 'bible-cards';
-  for (const w of world) worldCards.appendChild(worldCard(w));
-  worldSec.appendChild(worldCards);
-  wireReorder(worldCards, worldList);
-  const addW = document.createElement('button');
-  addW.className = 'cast-add';
-  addW.textContent = '+ ' + t('New element');
-  // the same small menu as a chapter's right-click, hung from the button
-  addW.onclick = async (e) => {
-    const r = addW.getBoundingClientRect();
-    const type = await popMenu(e.detail ? e.clientX : 0, e.detail ? r.bottom : 0,
-      Object.keys(WORLD_TYPES).map((k) => ({ label: worldTypeName(k), value: k })),
-      { title: t('New element'), from: addW });
-    if (type) addWorld(type);
-  };
-  const impW = document.createElement('button');
-  impW.className = 'cast-import-btn';
-  impW.textContent = t('Import from another book…');
-  impW.onclick = () => importCharacters();
-  const actionsW = document.createElement('div');
-  actionsW.className = 'cast-actions';
-  actionsW.append(addW, impW);
-  worldSec.appendChild(actionsW);
-  wrap.appendChild(worldSec);
-
-  for (const sec of wrap.querySelectorAll('.bible-section')) {
-    sec.hidden = bibleFilter !== 'all' && bibleFilter !== sec.dataset.sec;
-  }
-  applyBibleSearch();
   scroller.scrollTop = keep;
   requestAnimationFrame(() => wrap.querySelectorAll('textarea').forEach(growField));
+  renderNotesToc();
 
   if (focusId) {
-    const input = wrap.querySelector(`[data-id="${focusId}"] input`);
-    if (input) { input.focus(); input.scrollIntoView({ block: 'center' }); }
+    const card = wrap.querySelector(`[data-id="${focusId}"]`);
+    const input = card && card.querySelector('input');
+    if (input) { input.focus({ preventScroll: true }); card.scrollIntoView({ block: 'center', behavior: scrollBehavior() }); }
   }
 }
 
-// the search box narrows the cards (and the story fields) to those that hold the words
-function applyBibleSearch() {
-  const wrap = $('#characters-list');
-  const q = castFold(bibleQuery.trim());
-  wrap.querySelectorAll('.cast-card, .world-card').forEach((card) => {
-    const o = card.classList.contains('world-card')
-      ? worldList().find((w) => w.id === card.dataset.id)
-      : castList().find((c) => c.id === card.dataset.id);
-    card.hidden = !!q && !(o && cardText(o).includes(q));
-  });
-  wrap.querySelectorAll('.story-card .cc-field').forEach((f) => {
-    const el = f.querySelector('input, textarea');
-    f.hidden = !!q && !castFold(el.value).includes(q);
-  });
-  wrap.querySelectorAll('.cast-actions, .bible-section > .cast-empty').forEach((x) => { x.hidden = !!q; });
+function importButton() {
+  const imp = document.createElement('button');
+  imp.className = 'cast-import-btn notes-import';
+  imp.textContent = t('Import cards from another book…');
+  imp.onclick = () => importCharacters();
+  return imp;
+}
+
+// reordering inside one world rubric: a view of that type's cards whose
+// splices land back in the book's single world list, others left in place
+function worldReorderView(key) {
+  const all = worldList();
+  const mine = rubricCards(key);
+  const view = mine.slice();
+  view.splice = (...args) => {
+    const out = Array.prototype.splice.apply(view, args);
+    if (view.length !== mine.length) return out; // the card is in hand, not yet dropped
+    const slots = all.map((w, i) => (mine.includes(w) ? i : -1)).filter((i) => i >= 0);
+    slots.forEach((slot, j) => { all[slot] = view[j]; });
+    return out;
+  };
+  return view;
 }
 
 function worldCard(w) {
@@ -659,20 +614,18 @@ function addWorld(type) {
   bibleOpen.add(w.id);
   bibleMore.add(w.id);
   castChanged();
-  if (bibleFilter === 'cast' || bibleFilter === 'story') bibleFilter = 'world';
-  bibleQuery = '';
   renderCharacters(w.id);
   return w;
 }
 
 async function deleteWorld(w) {
-  if (!await confirmModal(t('Delete this card?'), t('{name} leaves the bible.', { name: w.name || worldTypeName(w.type) }), t('Delete'), { danger: true })) return;
+  if (!await confirmModal(t('Delete this card?'), t('{name} leaves your notes.', { name: w.name || worldTypeName(w.type) }), t('Delete'), { danger: true })) return;
   snapshotStructure(t('Delete'));
   book.world = worldList().filter((x) => x.id !== w.id);
   book.worldRemoved = [...new Set([...(book.worldRemoved || []), w.id])];
   castChanged();
   renderCharacters();
-  toast(t('{name} left the bible, {key} to undo', { name: w.name || worldTypeName(w.type), key: KZ }));
+  toast(t('{name} left your notes, {key} to undo', { name: w.name || worldTypeName(w.type), key: KZ }));
 }
 
 /* --- Pictures: a portrait for a character, a gallery for any card -- */
@@ -923,13 +876,19 @@ function showBibleImage(o, list, start) {
   box.focus();
 }
 
-// every picture the bible uses (the old single "image" too, until migrated)
+// every picture the cards use (the old single "image" too, until migrated)
 const bibleImages = (m) => [...(m.characters || []), ...(m.world || [])]
   .flatMap((x) => [x.portrait, x.image, ...(Array.isArray(x.images) ? x.images : [])]).filter(Boolean);
 
+// and the pictures set among the notes themselves
+const notesImages = (html) => [...(html || '').matchAll(/data-img="(img-[\w.-]+)"/g)].map((m) => m[1]);
+
 async function pruneBibleImages() {
   if (!book || !canBibleImages() || !window.neo.biblePruneImages) return;
-  await window.neo.biblePruneImages(book.id, bibleImages(book));
+  const opened = book;
+  const notes = await window.neo.readAux(book.id, 'notes');
+  if (book !== opened) return;
+  await window.neo.biblePruneImages(book.id, [...bibleImages(book), ...notesImages(notes)]);
 }
 
 // cards reorder by their grip: drop above or below another card of the same list
@@ -1090,20 +1049,20 @@ function addCharacter(fields) {
   const c = { id: castId(), first: '', last: '', nicknames: [], note: '', ...(fields || {}) };
   castList().push(c);
   castChanged();
-  if (currentTab === 'characters') renderCharacters(c.id);
+  if (currentTab === 'notes') renderCharacters(c.id);
   return c;
 }
 
 // asked once, then gone; ⌘Z still brings it back
 async function deleteCharacter(c) {
-  if (!await confirmModal(t('Delete this card?'), t('{name} leaves the bible. The text of the book is not touched.', { name: charName(c) }), t('Delete'), { danger: true })) return;
+  if (!await confirmModal(t('Delete this card?'), t('{name} leaves your notes. The text of the book is not touched.', { name: charName(c) }), t('Delete'), { danger: true })) return;
   snapshotStructure(t('Delete'));
   book.characters = castList().filter((x) => x.id !== c.id);
   // remembered, so a bound part that still has the card doesn't bring it back
   book.castRemoved = [...new Set([...(book.castRemoved || []), c.id])];
   castChanged();
   renderCharacters();
-  toast(t('{name} left the bible, {key} to undo', { name: charName(c), key: KZ }));
+  toast(t('{name} left your notes, {key} to undo', { name: charName(c), key: KZ }));
 }
 
 // A changed name can carry the book with it: the writer chooses
@@ -1321,7 +1280,6 @@ function mergeShared(own, theirs, removed, key) {
 }
 
 async function syncCastOnOpen() {
-  applyBibleVisibility();
   const opened = book;
   const peers = await findCastPeers();
   if (book !== opened) return;
@@ -1364,7 +1322,7 @@ async function syncCastOnOpen() {
   if (changed) scheduleMetaSave();
   await shareCast();
   scheduleCast();
-  if (currentTab === 'characters') renderCharacters();
+  if (currentTab === 'notes') renderCharacters();
 }
 
 function scheduleCastShare() {
@@ -1406,7 +1364,7 @@ async function importCharacters() {
     const world = (m && m.world) || [];
     if (cast.length || world.length) sources.push({ id: b.id, title: m.title || b.title, cast, world });
   }
-  if (!sources.length) { toast(t('No other book has a bible yet.')); return; }
+  if (!sources.length) { toast(t('No other book has cards yet.')); return; }
   const have = new Set(castList().map((c) => castFold(charName(c))));
   const haveW = new Set(worldList().map((w) => (w.type || '') + ':' + castFold(w.name || '')));
   const bd = document.createElement('div');
@@ -1482,7 +1440,6 @@ async function importCharacters() {
 
 function bibleOutline(wrap) {
   wrap.insertBefore(outlineSynopsis(), wrap.firstChild);
-  if (!bibleShown()) return;
   const cast = castList();
   if (!cast.length) return;
   wrap.querySelectorAll('.ol-line.ol-chapter').forEach((line) => {
@@ -1495,43 +1452,11 @@ function bibleOutline(wrap) {
       const b = document.createElement('button');
       b.className = 'ol-who';
       b.textContent = charName(c);
-      b.title = t('Mentions: {n}', { n: fmtNum(stats.get(c.id).n) }) + '\n' + t('Open in the bible');
-      b.onclick = () => openInBible(c.id);
+      b.title = t('Mentions: {n}', { n: fmtNum(stats.get(c.id).n) }) + '\n' + openInNotesLabel();
+      b.onclick = () => openInNotes(c.id);
       row.appendChild(b);
     }
     line.after(row);
-  });
-}
-
-/* --- Who sees the bible ------------------------------------------ */
-/*  A planner does: NEO asked at first run, "Blank Page" or "Outline  */
-/*  First". View → Story Bible shows or hides it for anyone, and that */
-/*  choice then stands whatever the writing style.                    */
-
-function bibleShown() {
-  if (!library) return false;
-  if (typeof library.bibleShown === 'boolean') return library.bibleShown;
-  return library.writingStyle === 'plotter';
-}
-
-function applyBibleVisibility() {
-  const tab = document.querySelector('.tab[data-tab="characters"]');
-  if (!tab) return;
-  tab.hidden = !bibleShown();
-  if (tab.hidden && currentTab === 'characters') switchTab('manuscript');
-  if (currentTab === 'outline' && book) renderOutline();
-}
-
-if (window.neo && window.neo.onMenu) {
-  window.neo.onMenu(async (msg) => {
-    if (msg.type === 'bibleShown') {
-      library.bibleShown = !!msg.checked;
-      await writeLibrary(library);
-      applyBibleVisibility();
-      toast(msg.checked ? t('The Story Bible is back in the tabs.') : t('The Story Bible is hidden. View → Story Bible brings it back.'));
-    }
-    // app.js has just saved the new style; the tab follows unless chosen by hand
-    if (msg.type === 'writingStyle') setTimeout(applyBibleVisibility, 0);
   });
 }
 
@@ -1657,7 +1582,7 @@ function chooseCastOption(i) {
     const words = o.name.split(/\s+/);
     const c = addCharacter({ first: words[0], last: words.slice(1).join(' ') });
     text = o.name;
-    toast(t('New character: {name}. Their card is in the Story Bible.', { name: charName(c) }));
+    toast(t('New character: {name}. Their card is in {tab}.', { name: charName(c), tab: tabName('notes') }));
   } else {
     text = o.form;
   }
@@ -1698,3 +1623,284 @@ document.addEventListener('focusout', () => setTimeout(() => {
   if (castPop && !castPop.host.contains(document.activeElement)) closeCastPop();
 }, 0));
 $('#paper-scroll').addEventListener('scroll', closeCastPop, { passive: true });
+
+/* --- The Notes: a contents list, / commands, a little Markdown ---- */
+/*  The notes stay free text. Under them, the cards in their rubrics; */
+/*  above them, a contents list of the headings and the rubrics.      */
+/*  / opens the commands (a card, a picture, a heading, a list).      */
+
+const notesEditor = () => $('#aux-editor');
+const inNotes = () => currentTab === 'notes' && notesEditor().dataset.kind === 'notes';
+
+// the notes as they go to disk: a picture keeps its file name, never its pixels
+function notesHTML() {
+  const ed = notesEditor();
+  if (!ed.querySelector('img[data-img]')) return ed.innerHTML;
+  const copy = ed.cloneNode(true);
+  copy.querySelectorAll('img[data-img]').forEach((img) => img.removeAttribute('src'));
+  return copy.innerHTML;
+}
+
+function hydrateNotesImages() {
+  if (!canBibleImages()) return;
+  notesEditor().querySelectorAll('img[data-img]:not([src])').forEach((img) => loadInto(img, img.dataset.img));
+}
+
+// switchTab has just put the notes on the page
+function notesOpened() {
+  $('#characters-list').hidden = false;
+  hydrateNotesImages();
+  renderCharacters();
+  if (notesFocus) setTimeout(showNotesFocus, 0); // after the scroll comes back
+}
+
+// the contents: the notes' own headings, then the rubrics
+let tocTimer = null;
+function renderNotesToc() {
+  let toc = $('#notes-toc');
+  if (!toc) {
+    toc = document.createElement('nav');
+    toc.id = 'notes-toc';
+    notesEditor().before(toc);
+  }
+  toc.innerHTML = '';
+  const entries = [];
+  notesEditor().querySelectorAll('h3, h4').forEach((h) => {
+    const label = h.textContent.trim();
+    if (label) entries.push({ label, sub: h.tagName === 'H4', el: h });
+  });
+  $('#characters-list').querySelectorAll('.bible-section').forEach((sec) => {
+    const n = sec.querySelectorAll('[data-id]').length;
+    const label = sec.querySelector('.bible-h').firstChild.textContent;
+    entries.push({ label, count: sec.dataset.sec === 'story' ? 0 : n, el: sec, rubric: true });
+  });
+  toc.hidden = entries.length < 2;
+  if (toc.hidden) return;
+  toc.setAttribute('aria-label', t('Contents'));
+  const head = document.createElement('div');
+  head.className = 'nt-head';
+  head.textContent = t('Contents');
+  toc.appendChild(head);
+  for (const e of entries) {
+    const b = document.createElement('button');
+    b.className = 'nt-item' + (e.sub ? ' nt-sub' : '') + (e.rubric ? ' nt-rubric' : '');
+    b.textContent = e.label;
+    if (e.count) {
+      const c = document.createElement('span');
+      c.className = 'nt-count';
+      c.textContent = fmtNum(e.count);
+      b.append(' ', c);
+    }
+    b.onclick = () => e.el.scrollIntoView({ block: 'start', behavior: scrollBehavior() });
+    toc.appendChild(b);
+  }
+}
+notesEditor().addEventListener('input', () => {
+  if (!inNotes()) return;
+  clearTimeout(tocTimer);
+  tocTimer = setTimeout(renderNotesToc, 500);
+});
+
+// Markdown at the start of a line: # and ## for headings, - or * for a
+// list, 1. for a numbered one. Format → Markdown Emphasis turns it off.
+const MD_BLOCKS = { '#': ['formatBlock', 'h3'], '##': ['formatBlock', 'h4'], '-': ['insertUnorderedList'], '*': ['insertUnorderedList'], '1.': ['insertOrderedList'] };
+notesEditor().addEventListener('keydown', (e) => {
+  if (e.key !== ' ' || e.metaKey || e.ctrlKey || e.altKey || e.isComposing || !inNotes()) return;
+  if (library && library.markdownOff) return;
+  const ed = notesEditor();
+  const sel = window.getSelection();
+  if (!sel.rangeCount || !sel.isCollapsed) return;
+  const range = sel.getRangeAt(0);
+  const start = range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer;
+  if (!start || start.closest('li, h3, h4')) return;
+  let block = start.closest('p, div');
+  if (!block || !ed.contains(block) || block === ed) {
+    // the first line of the notes sits in the editor itself
+    if (range.startContainer !== ed.firstChild) return;
+    block = ed;
+  }
+  const pre = document.createRange();
+  pre.setStart(block, 0);
+  pre.setEnd(range.startContainer, range.startOffset);
+  const cmd = MD_BLOCKS[pre.toString()];
+  if (!cmd) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  selectChars(block, 0, pre.toString().length);
+  document.execCommand('delete');
+  document.execCommand(cmd[0], false, cmd[1]);
+  renderNotesToc();
+});
+
+// / and a few letters: the commands, filtered as you type
+const SLASH_COMMANDS = [
+  { key: 'character', label: tk('Character'), group: tk('Cards'), run: () => addCharacter() },
+  ...Object.keys(WORLD_TYPES).map((k) => ({ key: k, label: WORLD_TYPES[k][0], group: tk('Cards'), run: () => addWorld(k) })),
+  { key: 'image', label: tk('Picture'), group: tk('In the notes'), run: (at) => insertNotesImages(at), when: () => canBibleImages() },
+  { key: 'heading', label: tk('Heading'), group: tk('In the notes'), run: () => document.execCommand('formatBlock', false, 'h3') },
+  { key: 'subheading', label: tk('Subheading'), group: tk('In the notes'), run: () => document.execCommand('formatBlock', false, 'h4') },
+  { key: 'list', label: tk('Bulleted list'), group: tk('In the notes'), run: () => document.execCommand('insertUnorderedList') },
+  { key: 'numbered', label: tk('Numbered list'), group: tk('In the notes'), run: () => document.execCommand('insertOrderedList') },
+  { key: 'import', label: tk('Import cards from another book…'), group: tk('In the notes'), run: () => importCharacters() }
+];
+
+let slashPop = null;       // { el, options, index }
+let slashDismissed = null; // the / sent away with Esc
+
+function slashContext() {
+  const sel = window.getSelection();
+  if (!book || !inNotes() || !sel.rangeCount || !sel.isCollapsed) return null;
+  const node = sel.anchorNode;
+  if (!node || node.nodeType !== Node.TEXT_NODE || !notesEditor().contains(node)) return null;
+  const before = node.textContent.slice(0, sel.anchorOffset);
+  const m = before.match(/(?:^|\s)\/([\p{L}\p{N}-]{0,24})$/u);
+  if (!m) return null;
+  return { node, at: before.length - m[1].length - 1, end: sel.anchorOffset, query: m[1] };
+}
+
+function slashOptions(query) {
+  const q = castFold(query);
+  return SLASH_COMMANDS.filter((c) => (!c.when || c.when()) && (!q
+    || castFold(t(c.label)).split(/\s+/).some((w) => w.startsWith(q))
+    || c.key.startsWith(q)));
+}
+
+function closeSlashPop() {
+  if (!slashPop) return;
+  slashPop.el.remove();
+  notesEditor().removeAttribute('aria-activedescendant');
+  slashPop = null;
+}
+
+function updateSlashPop(fromTyping) {
+  const ctx = slashContext();
+  if (!ctx) return closeSlashPop();
+  if (slashDismissed && slashDismissed.node === ctx.node && slashDismissed.at === ctx.at) return closeSlashPop();
+  if (!slashPop && !fromTyping) return;
+  const options = slashOptions(ctx.query);
+  if (!options.length) return closeSlashPop();
+  let el = slashPop && slashPop.el;
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'slash-pop';
+    el.setAttribute('role', 'listbox');
+    el.setAttribute('aria-label', t('Commands'));
+    el.addEventListener('mousedown', (e) => e.preventDefault());
+    document.body.appendChild(el);
+  }
+  el.innerHTML = '';
+  let group = null;
+  options.forEach((o, i) => {
+    if (o.group !== group) {
+      group = o.group;
+      const g = document.createElement('div');
+      g.className = 'cp-who';
+      g.textContent = t(group);
+      el.appendChild(g);
+    }
+    const opt = document.createElement('div');
+    opt.className = 'cp-opt';
+    opt.id = 'sp-o' + i;
+    opt.setAttribute('role', 'option');
+    opt.textContent = t(o.label);
+    opt.onclick = () => chooseSlashOption(i);
+    el.appendChild(opt);
+  });
+  const foot = document.createElement('div');
+  foot.className = 'cp-foot';
+  foot.textContent = t('Enter to choose · Esc keeps the /');
+  el.appendChild(foot);
+  const index = slashPop ? Math.min(slashPop.index, options.length - 1) : 0;
+  slashPop = { el, options, index };
+  markSlashOption();
+  const r = document.createRange();
+  r.setStart(ctx.node, ctx.at);
+  r.setEnd(ctx.node, Math.min(ctx.at + 1, ctx.node.length));
+  const rect = r.getBoundingClientRect();
+  const h = el.offsetHeight;
+  const w = el.offsetWidth;
+  const top = rect.bottom + 6 + h > window.innerHeight - 44 ? rect.top - h - 6 : rect.bottom + 6;
+  el.style.top = Math.max(8, top) + 'px';
+  el.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - w - 8)) + 'px';
+}
+
+function markSlashOption() {
+  if (!slashPop) return;
+  slashPop.el.querySelectorAll('.cp-opt').forEach((o) => {
+    const on = o.id === 'sp-o' + slashPop.index;
+    o.classList.toggle('on', on);
+    o.setAttribute('aria-selected', on ? 'true' : 'false');
+    if (on) o.scrollIntoView({ block: 'nearest' });
+  });
+  notesEditor().setAttribute('aria-activedescendant', 'sp-o' + slashPop.index);
+}
+
+function chooseSlashOption(i) {
+  const o = slashPop && slashPop.options[i];
+  const ctx = slashContext();
+  closeSlashPop();
+  if (!o || !ctx) return;
+  // the typed command goes (one undo brings it back), then it runs
+  const r = document.createRange();
+  r.setStart(ctx.node, ctx.at);
+  r.setEnd(ctx.node, ctx.end);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(r);
+  document.execCommand('delete');
+  const at = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+  o.run(at);
+  renderNotesToc();
+}
+
+// pictures among the notes: copied into the book like a card's, set where
+// the / was, each on its own line
+async function insertNotesImages(at) {
+  const paths = await window.neo.biblePickImage(true);
+  if (!paths || !paths.length || !book) return;
+  const names = [];
+  for (const p of paths) {
+    const f = await window.neo.bibleSetImage(book.id, p);
+    if (f) names.push(f);
+  }
+  if (!names.length) { toast(t('That picture could not be read.')); return; }
+  const ed = notesEditor();
+  ed.focus({ preventScroll: true });
+  if (at && ed.contains(at.startContainer)) {
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(at);
+  }
+  document.execCommand('insertHTML', false, names.map((f) => `<div class="note-pic"><img class="note-img" data-img="${f}" alt=""></div>`).join('') + '<div><br></div>');
+  hydrateNotesImages();
+}
+
+// a picture in the notes opens large, like a card's
+notesEditor().addEventListener('dblclick', (e) => {
+  const img = e.target.closest && e.target.closest('img[data-img]');
+  if (!img || !inNotes()) return;
+  const all = [...notesEditor().querySelectorAll('img[data-img]')].map((x) => x.dataset.img);
+  showBibleImage({ type: 'note', name: tabName('notes') }, all, Math.max(0, all.indexOf(img.dataset.img)));
+});
+
+window.addEventListener('keydown', (e) => {
+  if (!slashPop) return;
+  const n = slashPop.options.length;
+  let handled = true;
+  if (e.key === 'ArrowDown') slashPop.index = (slashPop.index + 1) % n;
+  else if (e.key === 'ArrowUp') slashPop.index = (slashPop.index + n - 1) % n;
+  else if (e.key === 'Enter' || e.key === 'Tab') chooseSlashOption(slashPop.index);
+  else if (e.key === 'Escape') {
+    const ctx = slashContext();
+    if (ctx) slashDismissed = { node: ctx.node, at: ctx.at };
+    closeSlashPop();
+  } else handled = false;
+  if (!handled) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  markSlashOption();
+}, true);
+notesEditor().addEventListener('input', () => updateSlashPop(true));
+document.addEventListener('selectionchange', () => { if (slashPop) updateSlashPop(false); });
+notesEditor().addEventListener('blur', () => setTimeout(closeSlashPop, 0));
+$('#paper-scroll').addEventListener('scroll', closeSlashPop, { passive: true });

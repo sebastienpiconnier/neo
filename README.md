@@ -1,4 +1,4 @@
-> **NEO speaks eight languages since 0.9.0.** This fork's translations were merged into Hugh Howey's NEO; the fork now carries the next proposals (a Story Bible, characters with @). **[What this fork is and what changed →](FORK.md)**
+> **NEO speaks eight languages since 0.9.0.** This fork's translations were merged into Hugh Howey's NEO; the fork now carries the next proposals (story cards in the Notes tab, characters with @). **[What this fork is and what changed →](FORK.md)**
 >
 > **NEO parle huit langues depuis la 0.9.0.** Les traductions de ce fork ont été intégrées au NEO de Hugh Howey ; le fork porte les propositions suivantes. **[Lire ce README en français →](README.fr.md)** · [Présentation du fork](FORK.md#version-française)
 

@@ -5017,11 +5017,6 @@ function switchTab(name) {
     renderDarlings();
     returnTo();
     findHere();
-  } else if (name === 'characters') {
-    $('#aux-title').textContent = t('Story Bible');
-    cList.hidden = false;
-    renderCharacters();
-    returnTo();
   } else if (name === 'outline') {
     $('#aux-title').textContent = tabName('outline');
     oList.hidden = false;
@@ -5035,6 +5030,7 @@ function switchTab(name) {
     auxEditor.dataset.kind = name;
     window.neo.readAux(book.id, name).then((html) => {
       auxEditor.innerHTML = html || '';
+      if (name === 'notes') notesOpened(); // bible.js: the cards under the notes
       auxEditor.focus({ preventScroll: true });
       returnTo();
       findHere();
@@ -5342,7 +5338,7 @@ function scheduleAuxSave() {
 function flushAux() {
   if (!auxDirty || !book) return;
   const kind = $('#aux-editor').dataset.kind;
-  if (kind) window.neo.writeAux(book.id, kind, $('#aux-editor').innerHTML);
+  if (kind) window.neo.writeAux(book.id, kind, kind === 'notes' ? notesHTML() : $('#aux-editor').innerHTML);
   auxDirty = false;
 }
 
@@ -6086,7 +6082,7 @@ async function structuralUndo() {
   renderStickies();
   if (currentTab === 'darlings') renderDarlings();
   if (currentTab === 'outline') renderOutline();
-  if (currentTab === 'characters') renderCharacters();
+  if (currentTab === 'notes') renderCharacters();
   scheduleCast();
   updateCounters();
   restoreCaret(snap.caret); // back to work, no announcement
@@ -8904,14 +8900,12 @@ document.addEventListener('mouseup', () => {
 }, true);
 
 // the tabs: Enter or Space opens one, ← → move along the row
-$$('.tab').forEach((tab) => {
+$$('.tab').forEach((tab, i, all) => {
   tab.addEventListener('keydown', (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tab.click(); }
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
       e.preventDefault();
-      const all = $$('.tab').filter((x) => !x.hidden); // a hidden tab is skipped
-      const i = all.indexOf(tab);
       all[(i + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length].focus();
     }
   });

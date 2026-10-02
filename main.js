@@ -461,7 +461,7 @@ ipcMain.handle('cover:read', (_e, bookId, fname) => {
 });
 
 // ---------------------------------------------------------------------------
-// Story Bible pictures: one per card, kept in the book's own bible/ folder
+// Pictures for the cards in Notes (and the notes themselves), kept in the book's own bible/ folder
 // (copied, never linked, so the book travels whole) and brought down to a
 // sensible size on the way in.
 // ---------------------------------------------------------------------------
@@ -1703,13 +1703,6 @@ function buildMenu() {
             // white paper in a light room: the whole app, shelf included
             { label: t('Light'), type: 'radio', checked: viewState.pageTheme === 'light', click: () => sendToWindow({ type: 'pageTheme', value: 'light' }) }
           ]
-        },
-        // the Story Bible's tab: shown to planners unless chosen here
-        {
-          label: t('Story Bible'),
-          type: 'checkbox',
-          checked: (() => { const l = readJSON(LIBRARY_FILE, {}); return typeof l.bibleShown === 'boolean' ? l.bibleShown : writingStyle === 'plotter'; })(),
-          click: (item) => sendToWindow({ type: 'bibleShown', checked: item.checked })
         },
         {
           label: t('Brighter Interface'),

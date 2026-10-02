@@ -882,12 +882,6 @@ body.night .ol-part .ol-num, body.night .ol-part-name { color: #918b7d; }
   font-size: 12px; padding: 3px 10px; color: #777; flex-shrink: 0;
 }
 .cc-del:hover { border-color: var(--red); color: var(--red); }
-.cast-add {
-  display: block; width: 100%; margin-top: 6px; background: none;
-  border: 1px dashed #d8d2c2; border-radius: 6px; color: #8d8778;
-  font-size: 13px; padding: 10px;
-}
-.cast-add:hover { color: var(--ink); border-color: var(--accent); }
 .cc-field textarea {
   width: 100%; background: none; border: none; border-bottom: 1px dashed #d8d2c2;
   font-family: var(--body-font); font-size: calc(var(--editor-size, 17px) * 15 / 17 * var(--page-zoom, 1));
@@ -902,8 +896,6 @@ body.night .ol-part .ol-num, body.night .ol-part-name { color: #918b7d; }
   text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #d8d2c2;
 }
 .cc-more:hover { color: var(--ink); }
-.cast-actions { display: flex; gap: 12px; margin-top: 6px; }
-.cast-actions .cast-add { flex: 1; margin-top: 0; }
 .cast-import-btn {
   background: none; border: 1px dashed #d8d2c2; border-radius: 6px; color: #8d8778;
   font-size: 13px; padding: 10px 14px;
@@ -918,10 +910,8 @@ body.night .ol-part .ol-num, body.night .ol-part-name { color: #918b7d; }
 .cast-import .ci-row input:disabled + span { opacity: 0.5; }
 body.night .cc-field textarea { color: inherit; border-bottom-color: #4a4742; }
 body.night .cast-import-btn, body.night .cc-more { border-color: #4a4742; text-decoration-color: #4a4742; }
-.cast-empty { text-align: center; color: #b9b4a8; font-style: italic; padding: 40px 0 30px; line-height: 1.7; }
 body.night .cast-card { border-color: #3a3835; border-left-color: var(--accent); }
 body.night .cc-field input { color: inherit; border-bottom-color: #4a4742; }
-body.night .cast-add { border-color: #4a4742; }
 
 /* --- Who is in this chapter (Notes & Comments pane) --- */
 #cast-strip { margin: 0 12px 14px; padding-bottom: 12px; border-bottom: 1px solid #2c2c2c; }
@@ -936,23 +926,23 @@ body.night .cast-add { border-color: #4a4742; }
 .cs-name .cs-count { color: #8a8a8a; margin-left: 2px; }
 
 /* --- The @ list --- */
-#cast-pop {
+:is(#cast-pop, #slash-pop) {
   position: fixed; z-index: 900; min-width: 200px; max-width: 320px; max-height: 300px;
   overflow-y: auto; background: var(--pane); border: 1px solid #3a3a3a; border-radius: 8px;
   box-shadow: 0 8px 28px rgba(0,0,0,0.45); padding: 6px 0; color: #ccc;
   font-size: 13px;
 }
-#cast-pop .cp-who {
+:is(#cast-pop, #slash-pop) .cp-who {
   padding: 6px 14px 2px; font-size: 12px; color: #8a8a8a;
   text-transform: uppercase; letter-spacing: 1px;
 }
-#cast-pop .cp-opt { padding: 4px 14px 4px 22px; cursor: pointer; border-left: 3px solid transparent; }
-#cast-pop .cp-opt.on { background: #2f2e29; color: #fff; border-left-color: var(--accent); }
-#cast-pop .cp-create { padding-left: 14px; color: var(--accent); border-top: 1px solid #2c2c2c; margin-top: 4px; padding-top: 6px; }
-#cast-pop .cp-foot { padding: 6px 14px 2px; font-size: 12px; color: #666; }
+:is(#cast-pop, #slash-pop) .cp-opt { padding: 4px 14px 4px 22px; cursor: pointer; border-left: 3px solid transparent; }
+:is(#cast-pop, #slash-pop) .cp-opt.on { background: #2f2e29; color: #fff; border-left-color: var(--accent); }
+:is(#cast-pop, #slash-pop) .cp-create { padding-left: 14px; color: var(--accent); border-top: 1px solid #2c2c2c; margin-top: 4px; padding-top: 6px; }
+:is(#cast-pop, #slash-pop) .cp-foot { padding: 6px 14px 2px; font-size: 12px; color: #666; }
 @media (forced-colors: active) {
-  #cast-pop { border: 1px solid CanvasText; }
-  #cast-pop .cp-opt.on { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+  :is(#cast-pop, #slash-pop) { border: 1px solid CanvasText; }
+  :is(#cast-pop, #slash-pop) .cp-opt.on { forced-color-adjust: none; background: Highlight; color: HighlightText; }
 }
 
 /* --- Left nav pane --- */
@@ -1572,34 +1562,20 @@ body.light #cast-strip .cs-none { color: #8f8a80; }
 body.light .cs-name { background: #fbf5e3; border-color: #e6dfcd; color: #3a362f; }
 body.light .cs-name:hover, body.light .cs-name:focus-visible { border-color: var(--accent); color: #1c1a17; }
 body.light .cs-name .cs-count { color: #857f73; }
-body.light #cast-pop { background: #fbfaf8; border-color: #dcd7ce; color: #3a362f; box-shadow: 0 10px 30px rgba(0,0,0,0.16); }
-body.light #cast-pop .cp-who, body.light #cast-pop .cp-foot { color: #857f73; }
-body.light #cast-pop .cp-opt.on { background: #f1ebdc; color: #1c1a17; }
-body.light #cast-pop .cp-create { border-top-color: #e6e1d7; }
+body.light :is(#cast-pop, #slash-pop) { background: #fbfaf8; border-color: #dcd7ce; color: #3a362f; box-shadow: 0 10px 30px rgba(0,0,0,0.16); }
+body.light :is(#cast-pop, #slash-pop) .cp-who, body.light :is(#cast-pop, #slash-pop) .cp-foot { color: #857f73; }
+body.light :is(#cast-pop, #slash-pop) .cp-opt.on { background: #f1ebdc; color: #1c1a17; }
+body.light :is(#cast-pop, #slash-pop) .cp-create { border-top-color: #e6e1d7; }
 .cast-import .ci-row input[type="checkbox"] { width: auto; flex: 0 0 auto; margin: 0; padding: 0; }
 .cc-details .cc-row .cc-field:first-child input { font-weight: 400; }
 .cc-meta .cc-stats { flex: 1; min-width: 0; }
 
-/* --- Story Bible --- */
-.bible-bar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: space-between; margin: -10px 0 26px; }
-.bible-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.bible-chip {
-  background: none; border: 1px solid #d8d2c2; border-radius: 14px; padding: 4px 12px;
-  font-size: 12px; color: #8d8778;
-}
-.bible-chip:hover { color: var(--ink); border-color: var(--accent); }
-.bible-chip.on { background: #efe7d4; border-color: #d9c9a3; color: var(--ink); }
-.bible-search {
-  flex: 0 1 200px; min-width: 140px; background: none; border: none; border-bottom: 1px dashed #d8d2c2;
-  font-size: 13px; padding: 4px 0; color: var(--ink); outline: none;
-}
-.bible-search:focus { border-bottom: 1px solid var(--accent); }
+/* --- The cards under the notes --- */
 .bible-section { margin-bottom: 34px; }
 .bible-h {
   font-family: -apple-system, sans-serif; font-weight: 400; font-size: 12px; letter-spacing: 2px;
   text-transform: uppercase; color: #8d8778; margin: 0 0 12px; padding-bottom: 6px; border-bottom: 1px solid #e3ddcf;
 }
-.bible-section .cast-empty { padding: 14px 0 16px; }
 .story-card { padding: 4px 0 0; }
 .cast-card, .world-card { position: relative; }
 .drag-grip {
@@ -1633,15 +1609,11 @@ body.light #cast-pop .cp-create { border-top-color: #e6e1d7; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .wc-body { margin: 10px 0 0 26px; }
-body.night .bible-chip, body.night .bible-search, body.night .wc-type { border-color: #4a4742; }
-body.night .bible-chip.on { background: #34312b; border-color: #5a5345; color: #ddd; }
+body.night .wc-type { border-color: #4a4742; }
 body.night .bible-h { border-bottom-color: #3a3835; }
 body.night .world-card { border-color: #3a3835; border-left-color: #7d6f55; }
-body.night .wc-name, body.night .bible-search { color: inherit; }
+body.night .wc-name { color: inherit; }
 body.night .drag-grip { color: #5a5650; }
-@media (forced-colors: active) {
-  .bible-chip.on { forced-color-adjust: none; background: Highlight; color: HighlightText; }
-}
 
 /* --- Bible pictures --- */
 .bible-img {
@@ -1776,3 +1748,46 @@ body.light .cs-name.on { color: #1c1a17; }
 .ol-who:hover, .ol-who:focus-visible { border-color: var(--accent); color: var(--ink); }
 body.night .ol-who { border-color: #3a3835; color: #8f8a7d; }
 body.night .ol-who:hover { color: #ddd; }
+
+/* --- Notes: the contents, the rubrics under the notes, / and Markdown --- */
+#aux-paper:not(:has(#aux-editor[hidden])) #characters-list:not([hidden]) { margin-top: 36px; }
+#aux-paper:has(#characters-list:not([hidden])) #aux-editor { min-height: 6em; }
+#aux-paper:has(#aux-editor[hidden]) #notes-toc { display: none; }
+#notes-toc {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px;
+  font-family: -apple-system, sans-serif; font-size: 12.5px; color: #8d8778;
+  margin: -18px 0 30px; padding-bottom: 14px; border-bottom: 1px solid #e3ddcf;
+}
+#notes-toc[hidden] { display: none; }
+#notes-toc .nt-head { width: 100%; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; }
+#notes-toc .nt-item {
+  background: none; border: none; padding: 0; font: inherit; color: #6f6a5f; cursor: pointer;
+  text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px;
+}
+#notes-toc .nt-item:hover, #notes-toc .nt-item:focus-visible { color: var(--ink); text-decoration-color: var(--accent); }
+#notes-toc .nt-sub { font-style: italic; }
+#notes-toc .nt-rubric { font-variant: small-caps; letter-spacing: .5px; }
+#notes-toc .nt-count { color: #b0a994; font-size: 11px; }
+#aux-paper #aux-editor h3 {
+  font-family: var(--body-font); font-weight: 600; font-size: 1.25em; letter-spacing: 0; text-transform: none;
+  color: inherit; text-align: left; margin: 1.2em 0 .4em;
+}
+#aux-paper #aux-editor h4 {
+  font-family: var(--body-font); font-weight: 600; font-size: 1.05em; letter-spacing: 0; text-transform: none;
+  color: inherit; text-align: left; margin: 1em 0 .3em;
+}
+#aux-editor ul, #aux-editor ol { margin: .3em 0; padding-left: 1.6em; }
+#aux-editor .note-pic { margin: .6em 0; }
+#aux-editor .note-img { display: block; max-width: 100%; max-height: 360px; border-radius: 4px; cursor: zoom-in; }
+#aux-editor .note-img:not([src]) { display: none; }
+.notes-hint { text-align: center; color: #b9b4a8; font-style: italic; font-size: 14px; padding: 18px 0 14px; }
+.bible-h { display: flex; align-items: center; justify-content: space-between; }
+.rubric-add {
+  background: none; border: 1px solid transparent; border-radius: 50%; width: 22px; height: 22px; line-height: 18px;
+  padding: 0; font-size: 15px; color: #a39d8e; cursor: pointer;
+}
+.rubric-add:hover, .rubric-add:focus-visible { color: var(--ink); border-color: var(--accent); }
+.notes-import { display: block; margin: 4px auto 0; }
+body.night #notes-toc { border-bottom-color: #3a3835; color: #918b7d; }
+body.night #notes-toc .nt-item { color: #a8a194; }
+body.night #notes-toc .nt-item:hover { color: #ddd; }
