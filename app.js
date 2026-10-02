@@ -2546,6 +2546,38 @@ function focusChapterStart(chId) {
   highlightNav();
 }
 
+// The caret at the last character of a chapter, inside its last paragraph,
+// with the view kept where the writer is — not thrown to the chapter's top
+function focusChapterEnd(chId) {
+  const nb = document.querySelector(`.chapter[data-id="${chId}"] .chapter-body`);
+  if (!nb) return;
+  if (!nb.isContentEditable) { showEntry(chId); return; }
+  nb.focus({ preventScroll: true });
+  const nr = document.createRange();
+  const paras = nb.querySelectorAll('p');
+  const last = paras[paras.length - 1];
+  if (last) {
+    // the last text node that's really editable (skips placeholders and ghosts)
+    const walk = document.createTreeWalker(last, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (n.parentElement && n.parentElement.isContentEditable
+        ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
+    });
+    let text = null;
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) text = n;
+    if (text) nr.setStart(text, text.length);
+    else nr.setStart(last, 0); // an empty last line: before its <br>
+  } else {
+    nr.selectNodeContents(nb);
+  }
+  nr.collapse(true);
+  const s = window.getSelection();
+  s.removeAllRanges();
+  s.addRange(nr);
+  currentChapterId = chId;
+  highlightNav();
+  revealCaret();
+}
+
 // Backspace in an empty chapter deletes it:
 function emptyChapterBackspace(e, body, chId) {
   if (e.key !== 'Backspace' || e.metaKey || e.ctrlKey || e.altKey) return false;
@@ -2557,7 +2589,7 @@ function emptyChapterBackspace(e, body, chId) {
   breakRun++;
   if (idx > 0) {
     const prev = book.chapterOrder[idx - 1];
-    deleteChapterQuiet(chId).then(() => { focusChapter(prev); resetNativeUndo(); });
+    deleteChapterQuiet(chId).then(() => { focusChapterEnd(prev); resetNativeUndo(); });
   } else {
     // an empty chapter 1 dissolves too — the caret lands at the top of
     // what just became the new chapter 1
@@ -3557,6 +3589,16 @@ document.addEventListener('keydown', (e) => {
   selectChars(just.block, caret, caret);
 }, true);
 
+// Swap the last n typed characters for text. They are selected and typed
+// over, so the new text takes their styling: deleting them first leaves the
+// caret in whatever sits before them, and after an italic word the dash
+// (and everything typed after it) would come out italic.
+function replaceBefore(n, text) {
+  const sel = window.getSelection();
+  for (let i = 0; i < n; i++) sel.modify('extend', 'backward', 'character');
+  document.execCommand('insertText', false, text);
+}
+
 function smartKeys(e, body) {
   // a field can reach smartKeys twice (its own handler and the page-wide
   // one below): the first pass wins
@@ -3579,15 +3621,12 @@ function smartKeys(e, body) {
   if (markdownEmphasis(e, body, range)) return;
   if (e.key === '-' && prevChars(1) === '-') {
     e.preventDefault();
-    document.execCommand('delete');
-    document.execCommand('insertText', false, '—'); // —
+    replaceBefore(1, '—'); // —
     return;
   }
   if (e.key === '.' && prevChars(2) === '..') {
     e.preventDefault();
-    document.execCommand('delete');
-    document.execCommand('delete');
-    document.execCommand('insertText', false, '…'); // …
+    replaceBefore(2, '…'); // …
     return;
   }
   const french = frenchTypography();
@@ -3609,7 +3648,7 @@ function smartKeys(e, body) {
     let opening = before === '' || /[\s\(\[\{‘“«„>]/.test(before);
     // after a dash, a quote usually closes speech that was cut off ("I was
     // just—"); it opens one only when no quotation is open in the paragraph
-    if (before === '—' || before === '–') opening = !quoteIsOpen(range, e.key === '"' ? q : { open: '‘', close: '’' });
+    if (before === '—' || before === '–') opening = !quoteIsOpen(range, e.key === '"' ? q : { open: '‘', close: '’' }, e.key === '"' ? '"' : '');
     let ch;
     if (e.key === "'") {
       // most languages type ' as an apostrophe only; English and Dutch also
@@ -3622,28 +3661,35 @@ function smartKeys(e, body) {
   }
 }
 
-// Is a quotation open at the caret, in the paragraph so far? Opening marks
-// against closing ones; an apostrophe (’ between two letters) is no quote.
-function quoteIsOpen(range, q) {
+// Is a quotation open at the caret, in the paragraph so far?
+function quoteIsOpen(range, q, straight) {
   let el = range.startContainer.nodeType === Node.TEXT_NODE ? range.startContainer.parentElement : range.startContainer;
   const block = el && el.closest ? el.closest('p, div') : null;
   if (!block) return false;
   const pre = document.createRange();
   pre.selectNodeContents(block);
   try { pre.setEnd(range.startContainer, range.startOffset); } catch { return false; }
-  const text = pre.toString();
+  return quoteOpenIn(pre.toString(), q, straight);
+}
+// The count itself: opening marks against closing ones; an apostrophe (’
+// between two letters) is no quote. Straight marks ("), which text imported
+// or pasted from a plain-text editor arrives with, have no side of their
+// own: they pair up in turn, so an odd one out is an open quotation.
+function quoteOpenIn(text, q, straight = '') {
   const open = q.open.trim();
   const close = q.close.trim();
   let depth = 0;
+  let straights = 0;
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
-    if (c === open && open !== close) depth++;
+    if (straight && c === straight) straights++;
+    else if (c === open && open !== close) depth++;
     else if (c === close) {
       if (close === '’' && /\p{L}/u.test(text[i - 1] || '') && /\p{L}/u.test(text[i + 1] || '')) continue;
       depth = Math.max(0, depth - 1);
     }
   }
-  return depth > 0;
+  return depth > 0 || straights % 2 === 1;
 }
 
 // The quotation marks of the language being written: the spellcheck
@@ -3659,7 +3705,8 @@ const QUOTE_STYLES = {
   de: { open: '„', close: '“' },
   pl: { open: '„', close: '”' },
   ro: { open: '„', close: '”' },
-  ru: { open: '«', close: '»' }
+  ru: { open: '«', close: '»' },
+  el: { open: '«', close: '»' }
 };
 function writingLanguage() {
   return (library && library.spellLanguage) || NeoI18n.getLocale();
@@ -3786,6 +3833,32 @@ $('#tp-author').addEventListener('input', () => {
   scheduleMetaSave();
 });
 
+// Which logical shortcut a keyboard event means.
+//
+// Matched by the CHARACTER the key types, not the position it sits at: the help
+// overlay names characters (⌘/), and a character is what a menu accelerator can
+// name. A physical fallback catches the layouts where that character needs a
+// modifier the accelerator cannot spell — on Swiss German `/` is Shift+7 and
+// `;` is Shift+`,`, and on German `ö` sits on the `;` key — and every fallback
+// skips the character the menu already handles, so one press fires one action.
+function isSpellcheckShortcut(e) {
+  if (!(e.metaKey || e.ctrlKey) || e.altKey) return false;
+  if (e.shiftKey && e.key === ';') return true;
+  return e.code === 'Semicolon' && e.key !== ';';
+}
+function isLargerTextShortcut(e) {
+  if (!(e.metaKey || e.ctrlKey) || e.altKey) return false;
+  return e.key === '+' || e.key === '=' || e.code === 'NumpadAdd';
+}
+function isSmallerTextShortcut(e) {
+  if (!(e.metaKey || e.ctrlKey) || e.altKey) return false;
+  return e.key === '-' || e.code === 'NumpadSubtract';
+}
+function isHelpShortcut(e) {
+  if (!(e.metaKey || e.ctrlKey) || e.altKey) return false;
+  return e.key === '/' || e.key === '?';
+}
+
 // Global editor shortcuts
 document.addEventListener('keydown', (e) => {
   if ($('#editor-view').hidden) return;
@@ -3799,19 +3872,34 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     if (currentTab === 'manuscript') darlingFromKeyboard();
   }
-  // Ctrl+; is matched by the character, not the key position. On a German
-  // QWERTZ keyboard the semicolon is Shift+',' — a combination the menu
-  // accelerator cannot name, so Ctrl+; never fired there. Shift is required
-  // in this branch because the plain Ctrl+; case belongs to the menu on the
-  // layouts that have it; this catches the ones that need Shift to type ';'.
-  if (cmd && e.shiftKey && !e.altKey && e.key === ';') {
+  if (isSpellcheckShortcut(e)) {
     e.preventDefault();
     toggleSpellcheck();
+  }
+  // The text-size pair keeps the menu's own keys on the layouts where they
+  // match, and takes over by character where they do not (`+` is Shift+1 on
+  // Swiss German, so CmdOrCtrl-Plus never fires there).
+  if (isLargerTextShortcut(e)) {
+    e.preventDefault();
+    void setEditorFontSize(1);
+  }
+  if (isSmallerTextShortcut(e)) {
+    e.preventDefault();
+    void setEditorFontSize(-1);
   }
   if (e.key === 'Escape') {
     if (!$('#searchbar').hidden) closeSearch();
     else window.neo.fullscreenEscape().then((exited) => { if (!exited) backToShelf(); });
   }
+});
+
+// The help character works on every layout, editor or shelf: ⌘/ needs Shift+7
+// on Swiss German, which the bare-character accelerator cannot name, so the
+// renderer catches the character the layout produced.
+document.addEventListener('keydown', (e) => {
+  if (!isHelpShortcut(e)) return;
+  e.preventDefault();
+  showHelp();
 });
 
 // ⌥⌘↓ / ⌥⌘↑ (Ctrl+Alt on Windows and Linux): next or previous chapter.
@@ -4855,6 +4943,7 @@ async function moveSelectionToDarlings(html, text) {
   const did = 'd-' + Date.now().toString(36);
 
   snapshotStructure('darling');
+  breakRun++; // the engine never saw this cut: ⌘Z inside the text must reach the structural stack
 
   let anchorPrefix = null;
   let anchorSuffix = null;
@@ -5046,6 +5135,16 @@ function switchTab(name) {
 
 const secLetter = (i) => String.fromCharCode(65 + (i % 26));
 
+/**
+ * Where the caret goes after a section is removed from the outline: the end of the section ABOVE it,
+ * the way a text editor behaves. Only the first section has no line above it, and then the chapter's
+ * own line is where the caret belongs.
+ */
+function focusAfterSectionRemoved(list, index, chId) {
+  const above = index > 0 ? list[index - 1] : undefined;
+  return above ? { secId: above.id } : { chId };
+}
+
 function renderOutline(focusTarget) {
   book.sectionNotes = book.sectionNotes || {};
   book.chapterNotes = book.chapterNotes || {};
@@ -5227,11 +5326,12 @@ function outlineLine(kind, chId, secId, index, label, text) {
     if (e.key === 'Backspace' && txt.textContent.trim() === '') {
       e.preventDefault();
       if (kind === 'section') {
-        const list = book.sectionNotes[chId];
+        const list = book.sectionNotes[chId] || [];
+        const focus = focusAfterSectionRemoved(list, index, chId);
         book.sectionNotes[chId] = list.filter((s) => s.id !== secId);
         scheduleMetaSave();
         syncGhosts(chId);
-        renderOutline({ chId });
+        renderOutline(focus);
       } else if (book.chapterOrder.filter((c) => isStory(c)).length > 1 && countWords(chapterText(chId)) === 0) {
         const prevCh = storyBefore(chId) || book.chapterOrder.find((c) => c !== chId && isStory(c));
         deleteChapterQuiet(chId).then(() => renderOutline({ chId: prevCh }));
@@ -5249,10 +5349,12 @@ function outlineLine(kind, chId, secId, index, label, text) {
       const choice = await optionModal(t('Delete this section?'), null,
         [{ label: t('Delete section'), desc: t('Removes the outline line and its gray ghost from the manuscript. Written prose is never touched.'), danger: true, value: 'delete' }]);
       if (choice === 'delete') {
-        book.sectionNotes[chId] = (book.sectionNotes[chId] || []).filter((s) => s.id !== secId);
+        const list = book.sectionNotes[chId] || [];
+        const focus = focusAfterSectionRemoved(list, index, chId);
+        book.sectionNotes[chId] = list.filter((s) => s.id !== secId);
         scheduleMetaSave();
         syncGhosts(chId);
-        renderOutline({ chId });
+        renderOutline(focus);
       }
     }
   });
@@ -8703,6 +8805,16 @@ async function showAbout() {
   bd.querySelector('.m-ok').focus();
 }
 
+// Text size and the reset travel with page zoom; the menu item and the
+// keyboard fallback share this so the two cannot drift.
+async function setEditorFontSize(value) {
+  const cur = library.editorFontSize || 17;
+  library.editorFontSize = value === 0 ? 17 : Math.min(22, Math.max(14, cur + value));
+  if (value === 0) library.pageZoom = 1; // ⌘0 resets pinch zoom too
+  await writeLibrary(library);
+  keepReadingPlace(applyFonts);
+}
+
 window.neo.onMenu(async (msg) => {
   // full screen and focus mode together hide the bottom bar until hovered
   // (styles.css); the window says when it goes in and out, whatever is open
@@ -8774,11 +8886,7 @@ window.neo.onMenu(async (msg) => {
     applyFonts();
   }
   if (msg.type === 'fontSize') {
-    const cur = library.editorFontSize || 17;
-    library.editorFontSize = msg.value === 0 ? 17 : Math.min(22, Math.max(14, cur + msg.value));
-    if (msg.value === 0) library.pageZoom = 1; // ⌘0 resets pinch zoom too
-    await writeLibrary(library);
-    keepReadingPlace(applyFonts);
+    await setEditorFontSize(msg.value);
   }
   if (msg.type === 'bodyFontPick') {
     const name = await pickLocalFont();

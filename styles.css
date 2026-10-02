@@ -797,6 +797,9 @@ body.night .chapter-body.blank::before { color: #5f5b52; }
   min-height: 50vh;
 }
 #aux-editor:empty::before { content: var(--ph-write-freely, 'Write freely…'); color: #b9b4a8; font-style: italic; }
+/* vim keys: while moving, the caret becomes a gold block, as in vim, so a
+   writer can see at a glance whether a letter will move or type */
+body.vim-nav .chapter-body, body.vim-nav #aux-editor { caret-color: var(--accent); caret-shape: block; }
 
 /* --- Structured outline tab --- */
 .ol-line {
@@ -1791,3 +1794,31 @@ body.night .ol-who:hover { color: #ddd; }
 body.night #notes-toc { border-bottom-color: #3a3835; color: #918b7d; }
 body.night #notes-toc .nt-item { color: #a8a194; }
 body.night #notes-toc .nt-item:hover { color: #ddd; }
+
+/* ===== Greek typography =====
+   Greek glyph-safe fonts for titles, authors and drop caps.
+   The original NEO display fonts are Latin-only subsets. */
+html[lang^="el"] {
+  --dropcap-font: Georgia, "Times New Roman", serif;
+}
+
+/* Cover author */
+html[lang^="el"] .book .b-author {
+  font-family: "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Sans / condensed-style covers */
+html[lang^="el"] .book.cv-stack .b-title,
+html[lang^="el"] .book.cv-bebas .b-title,
+html[lang^="el"] .book.cv-band .b-title,
+html[lang^="el"] .book.cv-oswald .b-title {
+  font-family: "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Serif / literary-style covers */
+html[lang^="el"] .book.cv-black .b-title,
+html[lang^="el"] .book.cv-fat .b-title,
+html[lang^="el"] .book.cv-fat .b-line.b-ital,
+html[lang^="el"] .book.cv-cinzel .b-title {
+  font-family: Georgia, "Times New Roman", serif;
+}
