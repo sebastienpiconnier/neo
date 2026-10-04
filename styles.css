@@ -12,6 +12,11 @@
   --red: #c0392b;
   --body-font: Georgia, "Times New Roman", serif;
   --dropcap-font: "Didot", "Bodoni 72", Georgia, serif;
+  /* the page: a book page's width, which in a window wide enough to leave
+     room on both sides grows a little (never past a comfortable line) */
+  --page-w: clamp(680px, 44vw, 760px);
+  /* the room the scrollbar and the page's own shadow need beside it */
+  --page-gutter: 80px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -155,6 +160,12 @@ button { font: inherit; cursor: pointer; }
 @font-face { font-family: 'Libre Bodoni'; src: url('fonts/libre-bodoni-latin-400-italic.otf') format('opentype'); font-weight: 400; font-style: italic; }
 @font-face { font-family: 'Libre Bodoni'; src: url('fonts/libre-bodoni-latin-700-normal.otf') format('opentype'); font-weight: 700; }
 @font-face { font-family: 'TeX Gyre Chorus'; src: url('fonts/texgyrechorus-latin-400-normal.otf') format('opentype'); font-weight: 400; }
+/* iA Writer Quattro (iA's own webfonts, unmodified: the license reserves the
+   name "iA Writer" for the originals) */
+@font-face { font-family: 'iA Writer Quattro'; src: url('fonts/iAWriterQuattroS-Regular.woff2') format('woff2'); font-weight: 400; }
+@font-face { font-family: 'iA Writer Quattro'; src: url('fonts/iAWriterQuattroS-Italic.woff2') format('woff2'); font-weight: 400; font-style: italic; }
+@font-face { font-family: 'iA Writer Quattro'; src: url('fonts/iAWriterQuattroS-Bold.woff2') format('woff2'); font-weight: 700; }
+@font-face { font-family: 'iA Writer Quattro'; src: url('fonts/iAWriterQuattroS-BoldItalic.woff2') format('woff2'); font-weight: 700; font-style: italic; }
 @font-face { font-family: 'Jost'; src: url('fonts/jost-latin-400-normal.ttf') format('truetype'); font-weight: 400; }
 @font-face { font-family: 'Jost'; src: url('fonts/jost-latin-400-italic.ttf') format('truetype'); font-weight: 400; font-style: italic; }
 @font-face { font-family: 'Jost'; src: url('fonts/jost-latin-700-normal.ttf') format('truetype'); font-weight: 700; }
@@ -512,6 +523,7 @@ body.night .ps-paper .ps-body.empty::before, body.night .ps-paper .tp-field:empt
   background: var(--bg); border: 1px solid #3a3a3a; border-radius: 6px;
   padding: 8px 13px; color: #ddd; font-size: 14px;
 }
+#fr-error { color: #d97b6c; font-size: 12px; line-height: 1.5; margin: 14px 0 0; }
 .fr-font:hover { border-color: #666; }
 .fr-font.sel { border-color: var(--accent); color: var(--accent); }
 .fr-font .fr-cap { font-size: 20px; margin-right: 7px; }
@@ -572,17 +584,19 @@ body.night #aux-editor * { color: inherit; }
 #paper-scroll {
   position: absolute; top: 0; bottom: 40px;
   left: 50%; transform: translateX(-50%);
-  width: min(calc(760px * var(--page-zoom, 1)), 94%);
+  width: min(calc((var(--page-w) + var(--page-gutter)) * var(--page-zoom, 1)), 94%);
   overflow-y: auto;
 }
 
 /* Search highlights — no DOM mutation, no focus theft */
 ::highlight(neo-search) { background: rgba(201, 168, 106, 0.35); }
 ::highlight(neo-search-current) { background: #c9a86a; color: #1c1c1c; }
+/* the sentence Read Aloud is on (⌘⇧U) */
+::highlight(neo-speak) { background: rgba(201, 168, 106, 0.28); }
 
 /* Each page of the book is its own sheet of paper */
 #paper {
-  width: calc(680px * var(--page-zoom, 1)); max-width: 92%;
+  width: calc(var(--page-w) * var(--page-zoom, 1)); max-width: 92%;
   margin: 40px auto 120px;
 }
 /* typewriter scrolling: room below the last line so it can sit mid-screen
@@ -601,7 +615,7 @@ body.focus-mode .sheet ::selection { color: #1c1c1c; }
 body.focus-mode.night .sheet ::selection { color: #d6d2c6; }
 /* the drop cap sits outside the highlight's reach; same selector as the cap
    itself so no other paragraph grows a ::first-letter */
-body.focus-mode:not(.no-dropcap) .chapter-body.focus-cap:not(.cap-off):not(.no-cap):not(.opens-dialogue) p:not(.poetry):not(p:not(.poetry) ~ p)::first-letter { color: var(--ink); }
+body.focus-mode:not(.no-dropcap) .chapter-body.focus-cap:not(.cap-off):not(.no-cap):not(.opens-dialogue) p[data-first]::first-letter { color: var(--ink); }
 .sheet {
   background: var(--paper); color: var(--ink);
   padding: 70px 72px 90px;
@@ -610,7 +624,7 @@ body.focus-mode:not(.no-dropcap) .chapter-body.focus-cap:not(.cap-off):not(.no-c
   margin-bottom: 44px;
 }
 #aux-paper {
-  width: calc(680px * var(--page-zoom, 1)); max-width: 92%;
+  width: calc(var(--page-w) * var(--page-zoom, 1)); max-width: 92%;
   background: var(--paper); color: var(--ink);
   margin: 40px auto 120px;
   padding: 70px 72px 90px;
@@ -674,14 +688,18 @@ body.focus-mode:not(.no-dropcap) .chapter-body.focus-cap:not(.cap-off):not(.no-c
    pass (the source of duplicated characters on delete) never runs */
 .chapter-body p { text-indent: 2em; margin: 0; white-space: pre-wrap; }
 #aux-editor p { white-space: pre-wrap; }
-/* the chapter's opening paragraph: the first one that isn't poetry */
-.chapter-body p:not(.poetry):not(p:not(.poetry) ~ p) { text-indent: 0; }
+/* the chapter's opening paragraph: the first with words that isn't poetry
+   (marked data-first in app.js) */
+.chapter-body p[data-first] { text-indent: 0; }
 /* Poetry paragraphs (⇧Enter): a quote, a stanza, a POV name, a dateline —
    pulled in from both margins, italic, no first-line indent, never a drop
    cap. Consecutive lines make one block; the block breathes above and below.
    The italic is real markup, laid in when the paragraph is made, so ⌘I
    takes it off any word the writer wants roman. */
 .chapter-body p.poetry { margin: 0 2.5em; text-indent: 0; }
+/* Flush paragraphs (⇧Enter): prose with no first-line indent — a report,
+   a list, an email inside the story */
+.chapter-body p.flush { text-indent: 0 !important; }
 /* a poetry paragraph is one italic; emphasis inside it stands upright, as
    typesetters set it (and as every export does, see paraRuns in app.js) */
 .chapter-body i i { font-style: normal; }
@@ -691,7 +709,7 @@ body.focus-mode:not(.no-dropcap) .chapter-body.focus-cap:not(.cap-off):not(.no-c
 /* cap-off while the caret is in the first paragraph: the rule must stop
    MATCHING entirely — a matching first-letter rule, even styled to nothing,
    makes the engine split the text internally, which corrupts deletes */
-body:not(.no-dropcap) .chapter-body:not(.cap-off):not(.no-cap):not(.opens-dialogue) p:not(.poetry):not(p:not(.poetry) ~ p)::first-letter {
+body:not(.no-dropcap) .chapter-body:not(.cap-off):not(.no-cap):not(.opens-dialogue) p[data-first]::first-letter {
   font-size: 3.4em; float: left; line-height: 0.8;
   padding: 4px 8px 0 0; font-family: var(--dropcap-font);
 }
@@ -719,8 +737,10 @@ body.bright .spell-menu { border-color: #4a4a4a; }
 body.bright .spell-menu button { color: #eee; }
 
 /* Section breaks: Enter twice for ***, three times for a new chapter */
+/* (always centered: an alignment a break picked up from the paragraph it
+   was made in, justified most of all, would set it flush left) */
 .chapter-body p.scene-break {
-  text-align: center; text-indent: 0 !important;
+  text-align: center !important; text-indent: 0 !important;
   letter-spacing: 8px; color: #888;
   margin: 1.6em 0; user-select: none;
 }
@@ -728,7 +748,7 @@ body.bright .spell-menu button { color: #eee; }
 /* …except a line of dialogue, there and at a story's opening: it keeps its
    indent, in line with the speech that follows (marked in app.js). Pages
    that aren't stories (no-cap) set their lines their own way. */
-.chapter-body.opens-dialogue:not(.no-cap) p:not(.poetry):not(p:not(.poetry) ~ p):not([style*="text-align"]),
+.chapter-body.opens-dialogue:not(.no-cap) p[data-first]:not([style*="text-align"]),
 .chapter-body:not(.no-cap) p.scene-break + p[data-speech]:not([style*="text-align"]) { text-indent: 2em; }
 /* centered/right paragraphs drop the first-line indent; justified keep it */
 .chapter-body p[style*="text-align"]:not([style*="justify"]) { text-indent: 0; }
@@ -952,7 +972,7 @@ body.night .cc-field input { color: inherit; border-bottom-color: #4a4742; }
 #nav-hotzone { position: fixed; left: 0; top: 0; bottom: 40px; width: 18px; z-index: 60; }
 /* the panes wake from well inside the margins, never over the page itself */
 #nav-hotzone, #side-hotzone {
-  width: clamp(18px, calc((100vw - min(760px * var(--page-zoom, 1), 94vw)) / 2 - 24px), 96px);
+  width: clamp(18px, calc((100vw - min((var(--page-w) + var(--page-gutter)) * var(--page-zoom, 1), 94vw)) / 2 - 24px), 96px);
 }
 #nav-pane {
   position: fixed; left: 0; top: 0; bottom: 40px; width: 248px;
@@ -1198,10 +1218,14 @@ body.full-screen.focus-mode #bottombar:not(:hover):not(.attn) { opacity: 0; }
 .shortcuts-header h2 { font-size: 23px; margin: 0; }
 .shortcuts-content {
   flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
-  padding: 22px 30px 28px; display: flex; gap: 32px; align-items: flex-start;
+  padding: 22px 30px 28px; display: flex; flex-wrap: wrap; gap: 24px 32px; align-items: flex-start;
 }
 .shortcuts-content::-webkit-scrollbar-thumb { background: #555; }
 .shortcuts-column { flex: 1; min-width: 0; }
+/* a long section under both columns, its rows in two columns of their own */
+.shortcuts-wide { flex-basis: 100%; min-width: 0; }
+.shortcuts-wide dl { columns: 2; column-gap: 32px; }
+.shortcuts-wide .shortcut-row { break-inside: avoid; }
 .shortcuts-section + .shortcuts-section { margin-top: 24px; }
 .shortcuts-section h3 { font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
 .shortcut-row {
@@ -1227,6 +1251,7 @@ body.full-screen.focus-mode #bottombar:not(:hover):not(.attn) { opacity: 0; }
 @media (max-width: 760px) {
   .shortcuts-content { flex-direction: column; align-items: stretch; gap: 24px; }
   .shortcuts-column { display: contents; }
+  .shortcuts-wide dl { columns: 1; }
   .shortcuts-section + .shortcuts-section { margin-top: 0; }
   .shortcuts-footer { flex-wrap: wrap; }
 }
@@ -1461,6 +1486,7 @@ body.light .fr-font.sel { border-color: var(--accent); color: var(--accent); }
 body.light .fr-choice:hover { border-color: var(--accent); }
 body.light .fr-choice.danger { border-color: #e2b9b0; }
 body.light .fr-choice.danger strong { color: #a8412f; }
+body.light #fr-error { color: #a8412f; }
 body.light #fr-sample { box-shadow: 0 0 0 1px #e6e1d6; }
 body.light .about-version { color: #6a665e; }
 body.light .modal p.about-line { color: #77726a; }
