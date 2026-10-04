@@ -891,6 +891,7 @@ const bibleImages = (m) => [...(m.characters || []), ...(m.world || [])]
 // and the pictures set among the notes themselves
 const notesImages = (html) => [...(html || '').matchAll(/data-img="(img-[\w.-]+)"/g)].map((m) => m[1]);
 
+// oxlint-disable-next-line no-unused-vars -- called from app.js
 async function pruneBibleImages() {
   if (!book || !canBibleImages() || !window.neo.biblePruneImages) return;
   const opened = book;
@@ -1287,6 +1288,7 @@ function mergeShared(own, theirs, removed, key) {
   return { list: kept, changed: changed || kept.length !== own.length };
 }
 
+// oxlint-disable-next-line no-unused-vars -- called from app.js
 async function syncCastOnOpen() {
   const opened = book;
   const peers = await findCastPeers();
@@ -1446,6 +1448,7 @@ async function importCharacters() {
 
 /* --- The Outline: the synopsis on top, who is in each chapter ------ */
 
+// oxlint-disable-next-line no-unused-vars -- called from app.js
 function bibleOutline(wrap) {
   wrap.insertBefore(outlineSynopsis(), wrap.firstChild);
   const cast = castList();
@@ -1481,7 +1484,7 @@ function castContext() {
   const host = node.parentElement && node.parentElement.closest('.chapter-body, #aux-editor');
   if (!host) return null;
   const before = node.textContent.slice(0, sel.anchorOffset);
-  const m = before.match(/(?:^|[^\p{L}\p{N}_@.])@([\p{L}\p{N}'’\-]{0,30}(?: [\p{L}\p{N}'’\-]{0,30})?)$/u);
+  const m = before.match(/(?:^|[^\p{L}\p{N}_@.])@([\p{L}\p{N}'’-]{0,30}(?: [\p{L}\p{N}'’-]{0,30})?)$/u);
   if (!m) return null;
   return { node, at: before.length - m[1].length - 1, end: sel.anchorOffset, query: m[1], host };
 }
@@ -1534,7 +1537,7 @@ function updateCastPop(fromTyping) {
     document.body.appendChild(el);
   }
   el.innerHTML = '';
-  let index = Math.max(0, options.findIndex((o) => o.best));
+  const index = Math.max(0, options.findIndex((o) => o.best));
   options.forEach((o, i) => {
     if (o.kind === 'form' && o.first) {
       const who = document.createElement('div');
@@ -1641,6 +1644,7 @@ const notesEditor = () => $('#aux-editor');
 const inNotes = () => currentTab === 'notes' && notesEditor().dataset.kind === 'notes';
 
 // the notes as they go to disk: a picture keeps its file name, never its pixels
+// oxlint-disable-next-line no-unused-vars -- called from app.js
 function notesHTML() {
   const ed = notesEditor();
   if (!ed.querySelector('img[data-img]')) return ed.innerHTML;
@@ -1655,6 +1659,7 @@ function hydrateNotesImages() {
 }
 
 // switchTab has just put the notes on the page
+// oxlint-disable-next-line no-unused-vars -- called from app.js
 function notesOpened() {
   $('#characters-list').hidden = false;
   hydrateNotesImages();
@@ -2011,7 +2016,7 @@ function notesExportModel(root) {
   const seen = new Map();
   blocks.filter((x) => x.t === 'h').forEach((b, i) => { b.hid = 'n' + (i + 1); });
   for (const b of blocks.filter((x) => x.t === 'h')) {
-    let slug = b.text.toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, '').trim().replace(/\s+/g, '-') || 'section';
+    const slug = b.text.toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, '').trim().replace(/\s+/g, '-') || 'section';
     const n = seen.get(slug) || 0;
     seen.set(slug, n + 1);
     b.id = n ? `${slug}-${n}` : slug;
@@ -2031,25 +2036,29 @@ async function notesPicture(file) {
   const r = await window.neo.bibleReadImage(book.id, file);
   if (!r) return null;
   const url = `data:${r.mime};base64,${r.base64}`;
-  const size = await new Promise((res) => {
+  const size = await new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => res({ w: img.naturalWidth, h: img.naturalHeight });
-    img.onerror = () => res({ w: 800, h: 600 });
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => resolve({ w: 800, h: 600 });
     img.src = url;
   });
   return { ...r, url, ...size };
 }
 
-const mdEscape = (s) => String(s).replace(/([\\`*_\[\]#<>])/g, '\\$1');
+const mdEscape = (s) => String(s).replace(/([\\`*_[\]#<>])/g, '\\$1');
 function mdRuns(runs) {
   return runs.map((r) => {
-    const tx = r.text.replace(/([\\*_`\[\]<>])/g, '\\$1');
+    const tx = r.text.replace(/([\\*_`~[\]<>])/g, '\\$1');
     const mark = r.b && r.i ? '***' : r.b ? '**' : r.i ? '*' : '';
-    if (!mark) return tx;
+    if (!mark && !r.s && !r.u) return tx;
     const lead = tx.match(/^\s*/)[0];
     const trail = tx.match(/\s*$/)[0];
-    const core = tx.slice(lead.length, tx.length - trail.length);
-    return core ? lead + mark + core + mark + trail : tx;
+    let core = tx.slice(lead.length, tx.length - trail.length);
+    if (!core) return tx;
+    // as the manuscript's Markdown export writes them
+    if (r.s) core = '~~' + core + '~~';
+    if (r.u) core = '<u>' + core + '</u>';
+    return lead + mark + core + mark + trail;
   }).join('');
 }
 
@@ -2091,6 +2100,8 @@ const htmlRuns = (runs) => runs.map((r) => {
   let s = escHtml(r.text);
   if (r.i) s = `<i>${s}</i>`;
   if (r.b) s = `<b>${s}</b>`;
+  if (r.s) s = `<s>${s}</s>`;
+  if (r.u) s = `<u>${s}</u>`;
   return s;
 }).join('');
 

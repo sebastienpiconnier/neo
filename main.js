@@ -709,7 +709,7 @@ ipcMain.handle('bible:setImage', (_e, bookId, srcPath) => {
     const png = ext === 'png';
     const fname = 'img-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6) + (png ? '.png' : '.jpg');
     fs.mkdirSync(bibleDir(bookId), { recursive: true });
-    fs.writeFileSync(path.join(bibleDir(bookId), fname), png ? img.toPNG() : img.toJPEG(85));
+    writeFileDurable(path.join(bibleDir(bookId), fname), png ? img.toPNG() : img.toJPEG(85));
     return fname;
   } catch (err) {
     logError('bible:setImage', err);
@@ -736,7 +736,7 @@ ipcMain.handle('bible:copyImage', (_e, fromBookId, fname, toBookId) => {
     if (fs.existsSync(dest)) return true;
     if (!fs.existsSync(src)) return false;
     fs.mkdirSync(bibleDir(toBookId), { recursive: true });
-    fs.copyFileSync(src, dest);
+    writeFileDurable(dest, fs.readFileSync(src));
     return true;
   } catch (err) {
     logError('bible:copyImage', err);
@@ -746,7 +746,9 @@ ipcMain.handle('bible:copyImage', (_e, fromBookId, fname, toBookId) => {
 
 // pictures no card has used for a week (checked when a book opens, so ⌘Z
 // within a session always finds its picture)
-ipcMain.handle('bible:pruneImages', (_e, bookId, keep) => {
+// a picture no card or note uses any more goes to the system trash (never
+// straight off the disk), after a week's grace
+ipcMain.handle('bible:pruneImages', async (_e, bookId, keep) => {
   try {
     const dir = bibleDir(bookId);
     if (!fs.existsSync(dir)) return 0;
@@ -758,8 +760,7 @@ ipcMain.handle('bible:pruneImages', (_e, bookId, keep) => {
       // book.json that uses it
       const full = path.join(dir, f);
       if (Date.now() - fs.statSync(full).mtimeMs < 7 * 24 * 3600 * 1000) continue;
-      fs.unlinkSync(full);
-      n++;
+      try { await require('electron').shell.trashItem(full); n++; } catch { /* left where it is */ }
     }
     return n;
   } catch (err) {
