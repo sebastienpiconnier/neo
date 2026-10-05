@@ -23,7 +23,6 @@ on:
       - 'pocket/**'
       - 'app.js'
       - 'bible.js'
-      - 'outline-cards.js'
       - 'covers.js'
       - 'styles.css'
       - 'fonts/**'
@@ -72,7 +71,6 @@ jobs:
           npm install
           cp ../app.js www/app.js
           cp ../bible.js www/bible.js
-          cp ../outline-cards.js www/outline-cards.js
           cp ../covers.js www/covers.js
           cp ../styles.css www/styles.css
           cp ../i18n.js www/i18n.js
